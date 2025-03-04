@@ -1,0 +1,2 @@
+--- TODO: validate that that each sound map gets a trigger name
+--- TODO: all sound maps get a list of sounds

@@ -1,29 +1,29 @@
-local path = "/home/eggbert/programs/lua/beepboop.nvim/src/bin/"
-local binary = path .. "boopbeep"
+-- beepboop.nvim lets users add sound effects on cues to Neovim
+---@module 'beepboop'
 
-local job_id = vim.fn.jobstart({binary}, {
-	stdout_buffered = true,
-	on_stdout = function(_, data, _)
-		print("Received:", table.concat(data, "\n"))
-	end,
-	on_exit = function(_, code) vim.print("Process exited with exit code: " .. code) end
-})
+---@class BeepBoop
+---@field state State
+---@field setup fun(opts: Config): BeepBoop
+---@field play fun(trigger_name: string)
+---@field enable fun()
+---@field disable fun()
+---@field toggle fun()
+local M = {}
 
-vim.print("Process started with job_id: " .. job_id)
+---@param opts Config?
+M.setup = function(opts)
+	M.state = require("beepboop.state")
+	M.state.config = vim.tbl_deep_extend("force", M.state.config, opts or {})
 
-vim.fn.chansend(job_id, "chestopen\n")
-vim.fn.chansend(job_id, "chestopen\n")
-vim.fn.chansend(job_id, "chestopen\n")
-vim.fn.chansend(job_id, "chestopen\n")
-vim.fn.chansend(job_id, "chestopen\n")
-vim.fn.chansend(job_id, "chestopen\n")
+	M.state.companion:initialize(M.state.config)
+	M.state.companion:load_sound_files(M.state.config)
+	M.state.companion:play_sound("chestopen")
 
-vim.keymap.set("n", "<leader>jk", function ()
-	if vim.fn.jobpid(job_id) > 0 then
-		vim.fn.chansend(job_id, "chestopen\n")
-	end
-end)
+	return M
+end
 
-vim.keymap.set("n", "<leader>jj", function ()
-	vim.fn.jobstop(job_id)
-end)
+M.play = function(trigger_name)
+	M.state.companion:play_sound(trigger_name)
+end
+
+return M

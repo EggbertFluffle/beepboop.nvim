@@ -1,9 +1,8 @@
 -- beepboop.nvim lets users add sound effects on cues to Neovim
 ---@module 'beepboop'
+local M = {}
 
 local eggutils = require("beepboop.eggutils")
-
-local M = {}
 
 -- ##################### VALIDATION #####################
 
