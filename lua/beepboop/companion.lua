@@ -2,58 +2,62 @@
 ---@module 'Companion'
 
 ---@class Companion
----@field initialize fun(companion: Companion, config: Config)
----@field load_sound_files fun(companion: Companion, config: Config)
----@field play_sound fun(companion: Companion, trigger_name: string)
----@field job_id integer
----@field on_stdout fun(channel_id: integer, data: string[], stream_name: string)
----@field on_stderr fun(channel_id: integer, data: string[], stream_name: string)
----@field on_exit fun(job_id: integer, exit_code: integer, event_type: string)
+---@field handle uv.uv_process_t Libuv process handling the companion binary 
+---@field pid integer The PID of the companion binary
+---@field stdin uv.uv_pipe_t|nil Pipe to companion binary stdin
+---@field stderr uv.uv_pipe_t|nil Pipe to companion binary stderr
+---@field initialize fun(companion: Companion, config: Config) Start the companion binary
+---@field cleanup fun(companion: Companion) Cleaup companion binary and related resources
+---@field load_sound_files fun(companion: Companion, config: Config) Load the sound files spesified in config sound_map
+---@field play_sound fun(companion: Companion, trigger_name: string) Send the binary a trigger to play a sound from
 local M = {}
-
-M.on_stdout = function (_, data, _)
-	-- vim.print(data)
-end
-
-M.on_stderr = function (_, data, _)
-	vim.print(data)
-end
 
 ---@param companion Companion
 ---@param config Config
 ---@return nil
 M.initialize = function(companion, config)
-	companion.job_id = vim.fn.jobstart({config.binary_path}, { on_stdout = companion.on_stdout,
-		on_stderr = companion.on_stderr,
-		on_exit = companion.on_exit
+	companion.stdin = vim.uv.new_pipe(false)
+	M.stderr = vim.uv.new_pipe(false)
+
+	companion.handle, companion.pid = vim.uv.spawn(config.binary_path, {
+			stdio = { companion.stdin , nil, companion.stderr },
+			detached = true
+		},
+		function (_, _)
+			companion:cleanup()
+		end
+	)
+
+	vim.api.nvim_create_autocmd("ExitPre", {
+		group = "beepboop",
+		callback = function (_)
+			companion:play_sound("chestopen")
+			companion:cleanup()
+		end
 	})
 end
 
 M.load_sound_files = function(companion, config)
-	assert(companion.job_id, "[BEEPBOOP] Companion binary has not been started!")
+	assert(companion.handle:is_active(), "Companion binary handle is not active!\n")
 
-	for _, sound_map in ipairs(config.sound_map) do
+	for _, sound_map in ipairs(config.sound_maps) do
 		for _, file_name in ipairs(sound_map.sounds) do
-			local command = "load_sound " ..
-				sound_map.trigger_name ..
-				" " ..
-				config.sound_directory ..
-				file_name ..
-				"\n";
-			vim.fn.chansend(companion.job_id, command)
+			local command = string.format(
+				"load_sound %s %s\n",
+				sound_map.trigger_name,
+				config.sound_directory .. file_name)
+			M.stdin:write(command)
 		end
 	end
 end
 
 M.play_sound = function (companion, trigger_name)
-	vim.fn.chansend(companion.job_id,
-		"play_sound " ..
-		trigger_name ..
-		"\n")
+	local command = "play_sound " .. trigger_name .. "\n"
+	companion.stdin:write(command)
 end
 
-M.on_exit = function (job_id, exit_code, event_type)
-	vim.fn.jobstop(job_id)
+M.cleanup = function (companion)
+	companion.stdin:write("quit\n")
 end
 
 return M

@@ -22,8 +22,6 @@ local job_id = vim.fn.jobstart({binary}, {
 vim.fn.chansend(job_id, "load_sound " .. sound_trigger_name .. " " .. sound_file .. "\n")
 vim.fn.chansend(job_id, "play_sound " .. sound_trigger_name .. "\n")
 
-os.execute("sleep 5")
-
 vim.fn.chansend(job_id, "quit\n")
 
 vim.fn.jobstop(job_id)
