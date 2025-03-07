@@ -6,39 +6,46 @@
 ---@field pid integer The PID of the companion binary
 ---@field stdin uv.uv_pipe_t|nil Pipe to companion binary stdin
 ---@field stderr uv.uv_pipe_t|nil Pipe to companion binary stderr
----@field initialize fun(companion: Companion, config: Config) Start the companion binary
----@field cleanup fun(companion: Companion) Cleaup companion binary and related resources
----@field load_sound_files fun(companion: Companion, config: Config) Load the sound files spesified in config sound_map
----@field play_sound fun(companion: Companion, trigger_name: string) Send the binary a trigger to play a sound from
 local M = {}
 
----@param companion Companion
+---Intialize the companion binary
+---@param self Companion
 ---@param config Config
----@return nil
-M.initialize = function(companion, config)
-	companion.stdin = vim.uv.new_pipe(false)
+M.initialize = function(self, config)
+	self.stdin = vim.uv.new_pipe(false)
 	M.stderr = vim.uv.new_pipe(false)
 
-	companion.handle, companion.pid = vim.uv.spawn(config.binary_path, {
-			stdio = { companion.stdin , nil, companion.stderr },
+	assert(
+		vim.fn.executable(config.binary_path), 
+		string.format("Binary is not present at the given path: \"%s\"", config.binary_path))
+
+	self.handle, self.pid = vim.uv.spawn(config.binary_path, {
+			stdio = { self.stdin , nil, self.stderr },
 			detached = true
 		},
 		function (_, _)
-			companion:cleanup()
+			self:cleanup()
 		end
 	)
 
-	vim.api.nvim_create_autocmd("ExitPre", {
+	self:set_volume(config.volume)
+
+	assert(self.handle and self.handle:is_active(), "Companion binary could not be started!")
+
+	vim.api.nvim_create_autocmd("VimLeavePre", {
 		group = "beepboop",
 		callback = function (_)
-			companion:play_sound("chestopen")
-			companion:cleanup()
+			self:play_sound("chestopen")
+			self:cleanup()
 		end
 	})
 end
 
-M.load_sound_files = function(companion, config)
-	assert(companion.handle:is_active(), "Companion binary handle is not active!\n")
+---Load validated sound files from config into companion
+---@param self Companion
+---@param config Config
+M.load_sound_files = function(self, config)
+	assert(self.handle:is_active(), "Companion binary handle is not active!\n")
 
 	for _, sound_map in ipairs(config.sound_maps) do
 		for _, file_name in ipairs(sound_map.sounds) do
@@ -51,13 +58,24 @@ M.load_sound_files = function(companion, config)
 	end
 end
 
-M.play_sound = function (companion, trigger_name)
+---@param self Companion
+---@param trigger_name string Name of sound trigger
+M.play_sound = function (self, trigger_name)
 	local command = "play_sound " .. trigger_name .. "\n"
-	companion.stdin:write(command)
+	self.stdin:write(command)
 end
 
-M.cleanup = function (companion)
-	companion.stdin:write("quit\n")
+---@param self Companion
+---@param volume integer
+M.set_volume = function (self, volume)
+	local command = string.format("set_master_volume %d\n", volume)
+	self.stdin:write(command)
+end
+
+---Cleaup companion binary and related resources
+---@param self Companion
+M.cleanup = function (self)
+	self.stdin:write("quit\n")
 end
 
 return M

@@ -1,16 +1,42 @@
----TODO: validate that that each sound map gets a trigger name
----TODO: all sound maps get a list of sounds
----Used to validate configuration and binary
----@module 'validate'
-
+---Used to validate configuration
+---@module 'beepboop.config'
 local M = {}
 
----@param config Config
----@return SoundMap[] Validated sound maps
-M.validate_sound_maps = function (config) local trigger_count = 0
-	local key_map_modes = { " ", "n", "v", "s", "x", "o", "!", "i", "l", "c", "t" }
+---@class KeyMap
+---@field mode string
+---@field key_chord string
+---@field blocking boolean
+local key_map = {}
 
-	for i, sound_map in ipairs(config.sound_maps) do
+---@class SoundMap
+---@field auto_command? string
+---@field trigger_name? string
+---@field key_map? KeyMap
+---@field sounds? string[]
+---@field sound? string
+local sound_maps = {}
+
+---@class Config
+---@field enabled? boolean
+---@field max_sounds? number The maximum number of sounds that can play at once
+---@field sound_directory? string Directory that contains all the sound files for sound_maps
+---@field sound_maps? (SoundMap?)[]
+---@field binary_path? string Path to boopbeep companion binary
+---@field volume? integer Master volume of BeepBoop
+M.default_config = {
+	enabled = true,
+	max_sounds = 20,
+	volume = 100,
+	sound_directory = vim.fn.stdpath("config") .. "/sounds/",
+	sound_maps = {},
+	binary_path = vim.fn.stdpath("data") .. "/beepboop/bin/boopbeep" -- TODO: Change to a default location
+}
+
+---@param config Config
+M.validate_sound_maps = function (config)
+	local trigger_count = 0
+
+	for _, sound_map in ipairs(config.sound_maps) do
 		if sound_map.trigger_name == nil then
 			sound_map.trigger_name = string.format("main:trigger%d", trigger_count)
 			trigger_count = trigger_count + 1
@@ -24,8 +50,9 @@ M.validate_sound_maps = function (config) local trigger_count = 0
 		})
 
 		if sound_map.key_map then
+			if sound_map.key_map.blocking == nil then sound_map.key_map.blocking = false end
 			vim.validate({
-				{ sound_map.key_map.mode, key_map_modes, "string" },
+				{ sound_map.key_map.mode, "string" },
 				{ sound_map.key_map.key_chord, "string" }
 			})
 		end
@@ -42,17 +69,6 @@ M.validate_sound_maps = function (config) local trigger_count = 0
 			local path = config.sound_directory .. sound_file
 			assert(vim.fn.filereadable(path), string.format("File %s is not readable", path))
 		end
-
-		config.sound_maps[i] = sound_map
-	end
-
-	return config
-end
-
----@param binary_path string
-M.validate_binary_install = function (binary_path)
-	if not vim.fn.executable(binary_path) then
-		-- TODO install binary to that or some other path
 	end
 end
 
@@ -63,7 +79,6 @@ end
 
 ---Validate and correct any tolerable errors in the config
 ---@param config Config
----@return Config 
 M.validate_config = function (config)
 	vim.validate({
 		{config.binary_path, "string"},
@@ -73,10 +88,7 @@ M.validate_config = function (config)
 		{config.sound_maps, "table"}
 	})
 
-	config= M.validate_sound_maps(config)
-
-	return config
+	M.validate_sound_maps(config)
 end
-
 
 return M

@@ -7,6 +7,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_rwops.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <memory>
@@ -74,13 +75,12 @@ int main(void) {
 	srand((unsigned)time(NULL));
 
 	Mix_Init(MIX_INIT_MP3 | MIX_INIT_FLAC | MIX_INIT_OGG | MIX_INIT_OPUS | MIX_INIT_MID | MIX_INIT_MOD);
-
 	Mix_Volume(-1, STARTING_VOLUME);
 	Mix_AllocateChannels(AUDIO_CHANNELS);
 
 	std::unordered_map<std::string, std::vector<std::shared_ptr<Mix_Chunk>>> sound_map;
 	std::vector<std::shared_ptr<SDL_RWops>> conversion_files;
-	conversion_files.reserve(32);
+	conversion_files.reserve(64);
 	bool quit = false;
 
 	while(!quit || Mix_Playing(-1) != 0) {
@@ -96,21 +96,27 @@ int main(void) {
 		if(command == "load_sound") {
 			// load_sound {trigger_name} {audio_file_path}
 			if(arguments.size() < 3) {
-				std::cerr << "Call to \"load_file\" not followed by enough arguments: " << SDL_GetError() << "\n";
+				std::cerr << "Call to \"load_file\" not followed by enough arguments\n";
 			} else {
 				load_sound(arguments.at(1), arguments.at(2), sound_map, conversion_files);
 			}
 		} else if(command == "play_sound") {
 			// play_sound {trigger_name}
 			if(arguments.size() < 2) {
-				std::cerr << "Call to \"play_sound\" not followed by enough arguments: " << SDL_GetError() << "\n";
+				std::cerr << "Call to \"play_sound\" not followed by enough arguments\n";
 			} else {
 				play_sound(arguments.at(1), sound_map);
 			}
 		} else if(command == "set_master_volume") {
+			if(arguments.size() < 2) {
+				std::cerr << "Call to \"set_master_volume\" not followed by enough arguments\n";
+			} else {
+				int volume = std::stoi(arguments.at(1));
+				Mix_MasterVolume(std::clamp(volume, 0, 100));
+			}
 		} else if(command == "set_sound_volume") {
 		} else if(command == "quit") {
-			quit = true;	
+			quit = true;
 		} else {
 			std::cerr << "Unrecognized command \"" << command << "\"\n";
 			break;
