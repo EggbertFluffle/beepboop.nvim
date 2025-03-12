@@ -5,8 +5,6 @@
 local M = {}
 
 local config = require("beepboop.config")
-
----@type Trigger
 local trigger = require("beepboop.trigger")
 
 ---@param opts Config? BeepBoop configuration
@@ -17,15 +15,11 @@ M.setup = function(opts)
 	M.state = require("beepboop.state")
 	M.state.config = vim.tbl_deep_extend("force", config.default_config, opts or {})
 
-	config.validate_config(M.state.config)
+	vim.api.nvim_create_augroup("beepboop_core", { clear = true })
 
-	vim.api.nvim_create_augroup("beepboop", { clear = true })
-
+	config.validate(M.state.config)
 	M.state.companion:initialize(M.state.config)
-	M.state.companion:load_sound_files(M.state.config)
-
-	trigger.set_autocmds(M.state)
-	trigger.set_key_maps(M.state)
+	trigger.set_theme_triggers(M.state.config.theme, M.state.companion)
 
 	return M
 end

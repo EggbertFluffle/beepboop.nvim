@@ -2,15 +2,14 @@
 // hdiambrosio@gmail.com
 // https://eggbert.xyz
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_error.h>
-#include <SDL2/SDL_mixer.h>
-#include <SDL2/SDL_rwops.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_oldnames.h>
+#include <SDL3_mixer/SDL_mixer.h>
 
+#include <memory>
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
-#include <memory>
 #include <ctime>
 #include <vector>
 #include <iostream>
@@ -34,7 +33,7 @@ std::string get_file_name(const std::string& file_path);
 /*
 int load_sound(const std::string& trigger_name, const std::string& file_path, 
 			   std::unordered_map<std::string, std::vector<std::shared_ptr<Mix_Chunk>>>& sound_map,
-			   std::vector<std::shared_ptr<SDL_RWops>>& conversion_files);
+			   std::vector<SDL_IOStream*>& conversion_files);
 * @param trigger_name: name of trigger for sound
 * @param file_path: absolute path to file
 * @param sound_map: sound_map to append new sound to
@@ -44,7 +43,7 @@ int load_sound(const std::string& trigger_name, const std::string& file_path,
 */
 int load_sound(const std::string& trigger_name, const std::string& file_path, 
 			   std::unordered_map<std::string, std::vector<std::shared_ptr<Mix_Chunk>>>& sound_map,
-			   std::vector<std::shared_ptr<SDL_RWops>>& conversion_files);
+			   std::vector<SDL_IOStream*>& conversion_files);
 
 /*
 * int play_sound(std::string& trigger_name, std::unordered_map<std::string, std::shared_ptr<Mix_Chunk>> sound_map);
@@ -67,8 +66,9 @@ const int AUDIO_CHANNELS = 64;
 
 int main(void) {
 	SDL_Init(SDL_INIT_AUDIO);
-	if(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 16) == -1) {
-		std::cerr << "SDL2 failed to initialize!: " << SDL_GetError() << "\n";
+
+	if(!Mix_OpenAudio(0, NULL)) {
+		std::cerr << "SDL3 failed to initialize!: " << SDL_GetError() << "\n";
 		return 1;
 	}
 
@@ -79,7 +79,7 @@ int main(void) {
 	Mix_AllocateChannels(AUDIO_CHANNELS);
 
 	std::unordered_map<std::string, std::vector<std::shared_ptr<Mix_Chunk>>> sound_map;
-	std::vector<std::shared_ptr<SDL_RWops>> conversion_files;
+	std::vector<SDL_IOStream*> conversion_files;
 	conversion_files.reserve(64);
 	bool quit = false;
 
@@ -151,7 +151,7 @@ std::string get_file_name(const std::string& file_path) {
 
 int load_sound(const std::string& trigger_name, const std::string& file_path, 
 			   std::unordered_map<std::string, std::vector<std::shared_ptr<Mix_Chunk>>>& sound_map,
-			   std::vector<std::shared_ptr<SDL_RWops>>& conversion_files) {
+			   std::vector<SDL_IOStream*>& conversion_files) {
 	if(file_path.empty()) {
 		std::cerr << "Empty file path when trying to load an audio file:" << SDL_GetError() << "\n";
 		return -1;
@@ -181,13 +181,13 @@ int load_sound(const std::string& trigger_name, const std::string& file_path,
 			sound_map.at(trigger_name).emplace_back(sound_chunk);
 		}
 	} else {
-		std::shared_ptr<SDL_RWops> rw(SDL_RWFromFile(file_path.c_str(), "rb"), SDL_FreeRW);
-		if(!rw) {
+		SDL_IOStream* io(SDL_IOFromFile(file_path.c_str(), "rb"));
+		if(!io) {
 			std::cerr << "Failed to open audio file \"" << file_path << "\": " << SDL_GetError() << "\n";
 			return -1;
 		}
 
-		std::shared_ptr<Mix_Chunk> sound_chunk(Mix_LoadWAV_RW(rw.get(), 0), Mix_FreeChunk);
+		std::shared_ptr<Mix_Chunk> sound_chunk(Mix_LoadWAV_IO(io, 0), Mix_FreeChunk);
 		if(!sound_chunk) {
 			std::cerr << "Failed to convert audio file \"" << file_path << "\" to WAV: " << SDL_GetError() << "\n";
 			return -1;
