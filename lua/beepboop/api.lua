@@ -18,6 +18,9 @@ M.setup = function(opts)
 	vim.api.nvim_create_augroup("beepboop_core", { clear = true })
 
 	config.validate(M.state.config)
+
+	M.state.companion.validate(M.state.config)
+
 	M.state.companion:initialize(M.state.config)
 	trigger.set_theme_triggers(M.state.config.theme, M.state.companion)
 

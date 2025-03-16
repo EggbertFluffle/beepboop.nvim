@@ -29,6 +29,7 @@ local key_map = {}
 ---@field key_map? KeyMap
 ---@field sounds? string[]
 ---@field sound? string
+---@field volume? integer
 local sound_maps = {}
 
 ---@param theme Theme
@@ -41,8 +42,11 @@ local validate_sound_maps = function (theme)
 			{ sound_map.trigger_name, { "string", "nil" } },
 			{ sound_map.key_map, { "table", "nil" } },
 			{ sound_map.sounds, { "table", "nil" } },
-			{ sound_map.sound, { "string", "nil" } }
+			{ sound_map.sound, { "string", "nil" } },
+			{ sound_map.volume, { "number", "nil", } }
 		})
+
+		sound_map.volume = sound_map.volume or 100
 
 		if sound_map.trigger_name == nil then
 			sound_map.trigger_name = string.format("trigger%d", trigger_count)

@@ -8,15 +8,15 @@ local utils = require("beepboop.utils")
 local path_seperator = utils.path_seperator
 
 ---@class Config
----@field enabled? boolean
----@field binary_path? string Path to boopbeep companion binary
----@field theme_directory? string Where to look for and to download remote themes
----@field volume? integer Master volume of BeepBoop
----@field theme? string|Theme URL or file path to a theme directory containing a theme.json
+---@field enabled boolean
+---@field binary_path string Path to boopbeep companion binary
+---@field theme_directory string Where to look for and to download remote themes
+---@field volume integer Master volume of BeepBoop
+---@field theme string|Theme URL or file path to a theme directory containing a theme.json
 M.default_config = {
 	enabled = true,
 	volume = 100,
-	binary_path = vim.fn.stdpath("data") .. string.format("%sbeepboop%sbin%s", path_seperator, path_seperator, path_seperator),
+	binary_path = vim.fn.stdpath("data") .. string.format("%sbeepboop%sbin%sboopbeep", path_seperator, path_seperator, path_seperator),
 	theme_directory = vim.fn.stdpath("data") .. string.format("%sbeepboop%sthemes%s", path_seperator, path_seperator, path_seperator),
 }
 
@@ -30,9 +30,7 @@ M.validate = function (config)
 		{ config.theme_directory, "string" }
 	})
 
-	config.binary_path = utils.trailing_directory_slash(config.binary_path)
 	config.theme_directory = utils.trailing_directory_slash(config.theme_directory)
-
 	theme.validate(config)
 end
 

@@ -24,6 +24,13 @@ local load_sound_files = function(self, theme)
 				theme.sound_directory .. file_name)
 			M.stdin:write(command)
 		end
+
+		local command = string.format(
+			"set_sound_volume %s %d\n",
+			sound_map.trigger_name,
+			128 * (sound_map.volume / 100)
+		)
+		M.stdin:write(command)
 	end
 end
 
@@ -34,11 +41,7 @@ M.initialize = function(self, config)
 	self.stdin = vim.uv.new_pipe(false)
 	self.stderr = vim.uv.new_pipe(false)
 
-	assert(
-		vim.fn.executable(config.binary_path),
-		string.format("Binary is not present at the given path: \"%s\"", config.binary_path))
-
-	self.handle, self.pid = vim.uv.spawn(config.binary_path .. "boopbeep", {
+	self.handle, self.pid = vim.uv.spawn(config.binary_path, {
 			stdio = { self.stdin , nil, self.stderr },
 			detached = true
 		},
@@ -57,6 +60,22 @@ M.initialize = function(self, config)
 			self:cleanup()
 		end
 	})
+end
+
+---@param config Config
+local download_binary = function (config)
+	
+end
+
+---@param config Config
+M.validate = function (config)
+	if vim.fn.executable(config.binary_path) == 0 then
+		if vim.fn.executable("boopbeep") == 1 then
+			config.binary_path = "boopbeep"
+		else
+			download_binary(config)
+		end
+	end
 end
 
 ---@param self Companion
