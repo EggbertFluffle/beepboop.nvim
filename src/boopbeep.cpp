@@ -17,12 +17,17 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <chrono>
 
 class Trigger {
 	std::vector<std::shared_ptr<Mix_Chunk>> chunks;
 	std::vector<std::shared_ptr<SDL_IOStream>> ios;
+	std::chrono::duration<std::uint32_t> cooldown;
+	std::chrono::time_point<std::chrono::steady_clock> last_time;
 
 public:
+	Trigger() : cooldown(0) { }
+
 	Mix_Chunk* const get_random_chunk() const {
 		return chunks.at(rand() % chunks.size()).get();
 	}
@@ -40,6 +45,10 @@ public:
 		for(const std::shared_ptr<Mix_Chunk>& chunk : chunks) {
 			Mix_VolumeChunk(chunk.get(), _volume);
 		}
+	}
+
+	void set_cooldown(const std::uint32_t& _cooldown) {
+		cooldown = _cooldown;
 	}
 };
 
@@ -72,11 +81,14 @@ int load_sound(const std::string& trigger_name, const std::string& file_path,
 			   std::unordered_map<std::string, Trigger>& sound_map);
 
 /*
-* int play_sound(std::string& trigger_name, std::unordered_map<std::string, std::shared_ptr<Mix_Chunk>> sound_map);
+int play_sound(const std::string& trigger_name, std::unordered_map<std::string, Trigger>& sound_map,
+			   std::chrono::time_point<std::chrono::steady_clock>& last_master_time) {
 * @param trigger_name: name of sound to play
 * @param sound_map: sound_map to pull sound chunk from
+* @param last_master_time: The last time_point where a sound was played
 */
-int play_sound(const std::string& trigger_name, std::unordered_map<std::string, Trigger>& sound_map);
+int play_sound(const std::string& trigger_name, std::unordered_map<std::string, Trigger>& sound_map,
+			   std::chrono::time_point<std::chrono::steady_clock>& last_master_time);
 
 /*
 * std::vector<std::string> string_split(std::string& source, const std::string& delimiter);
@@ -90,7 +102,7 @@ std::vector<std::string> string_split(std::string& source, const std::string& de
 const std::string ARG_DELIM = " ";
 const int STARTING_VOLUME = MIX_MAX_VOLUME;
 const int AUDIO_CHANNELS = 64;
-
+std::chrono::duration<std::uint32_t> master_cooldown(0);
 
 int main(void) {
 	SDL_Init(SDL_INIT_AUDIO);
@@ -109,6 +121,8 @@ int main(void) {
 	std::unordered_map<std::string, Trigger> sound_map;
 	std::vector<SDL_IOStream*> conversion_files;
 	conversion_files.reserve(64);
+
+	std::chrono::time_point<std::chrono::steady_clock> last_master_time = std::chrono::steady_clock::now();
 	bool quit = false;
 
 	while(!quit || Mix_Playing(-1) != 0) {
@@ -120,6 +134,7 @@ int main(void) {
 
 		const std::vector<std::string> arguments = string_split(request, ARG_DELIM);
 		const std::string command = arguments.at(0);
+		const auto last_master_time = std::chrono::steady_clock::now();
 
 		if(command == "load_sound") {
 			// load_sound {trigger_name} {audio_file_path}
@@ -133,7 +148,7 @@ int main(void) {
 			if(arguments.size() < 2) {
 				std::cerr << "Call to \"play_sound\" not followed by enough arguments\n";
 			} else {
-				play_sound(arguments.at(1), sound_map);
+				play_sound(arguments.at(1), sound_map, last_master_time);
 			}
 		} else if(command == "set_master_volume") {
 			if(arguments.size() < 2) {
@@ -238,7 +253,8 @@ int load_sound(const std::string& trigger_name, const std::string& file_path,
 	return 0;
 }
 
-int play_sound(const std::string& trigger_name, std::unordered_map<std::string, Trigger>& sound_map) {
+int play_sound(const std::string& trigger_name, std::unordered_map<std::string, Trigger>& sound_map,
+			   std::chrono::time_point<std::chrono::steady_clock>& last_master_time) {
 	if(trigger_name.empty()) {
 		std::cerr << "Cannot play sound of empty trigger name: " << SDL_GetError() << "\n";
 		return -1;
@@ -249,7 +265,14 @@ int play_sound(const std::string& trigger_name, std::unordered_map<std::string, 
 		return -1;
 	}
 
+	// If master cooldown is not over, don't play
+	const auto now = std::chrono::steady_clock::now();
+	if(now - last_master_time < master_cooldown) { return 0; }
+
+	Trigger& trigger = sound_map.at(trigger_name);
+
 	Mix_PlayChannel(-1, sound_map.at(trigger_name).get_random_chunk(), 0);
+	last_master_time = std::chrono::steady_clock::now();
 
 	return 0;
 }
