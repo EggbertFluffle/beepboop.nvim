@@ -22,6 +22,7 @@ local load_sound_files = function(self, theme)
 				"load_sound %s %s\n",
 				sound_map.trigger_name,
 				theme.sound_directory .. file_name)
+			print(command)
 			M.stdin:write(command)
 		end
 
@@ -49,6 +50,10 @@ M.initialize = function(self, config)
 			self:cleanup()
 		end)
 
+	self.stderr:read_start(function(err, chunk)
+		print(chunk)
+	end) 
+
 	assert(self.handle and self.handle:is_active(), "Companion binary could not be started!")
 
 	load_sound_files(self, config.theme --[[@as Theme]])
@@ -64,7 +69,7 @@ end
 
 ---@param config Config
 local download_binary = function (config)
-	
+	print("well get there lol")
 end
 
 ---@param config Config
@@ -92,10 +97,28 @@ M.set_volume = function (self, volume)
 	self.stdin:write(command)
 end
 
+---@param self Companion
+M.mute = function(self)
+	self.stdin:write("mute\n");
+end
+
+---@param self Companion
+M.unmute = function(self)
+	self.stdin:write("unmute\n");
+end
+
+---@param self Companion
+M.toggle_mute = function(self)
+	self.stdin:write("toggle_mute\n");
+end
+
 ---Cleaup companion binary and related resources
 ---@param self Companion
 M.cleanup = function (self)
 	self.stdin:write("quit\n")
+
+	self.stdin:close();
+	self.stderr:close();
 end
 
 return M

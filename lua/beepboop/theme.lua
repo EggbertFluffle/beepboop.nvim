@@ -13,7 +13,7 @@ local M = {}
 ---@field cooldown? integer The cooldown after an audio cue before it can play again, 0 indicated none
 local default_theme = {
 	sound_directory = vim.fn.stdpath("config") .. path_seperator .. "sounds" .. path_seperator,
-	max_sounds = 20,
+	max_sounds = 15,
 	cooldown = 0
 }
 

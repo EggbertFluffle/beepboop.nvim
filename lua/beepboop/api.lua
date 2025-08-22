@@ -6,6 +6,7 @@ local M = {}
 
 local config = require("beepboop.config")
 local trigger = require("beepboop.trigger")
+local commands = require("beepboop.commands")
 
 ---@param opts Config? BeepBoop configuration
 ---@return BeepBoop
@@ -23,6 +24,8 @@ M.setup = function(opts)
 
 	M.state.companion:initialize(M.state.config)
 	trigger.set_theme_triggers(M.state.config.theme, M.state.companion)
+
+	commands.create_commands(M.state.companion)
 
 	return M
 end
