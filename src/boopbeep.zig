@@ -16,10 +16,10 @@ const stderr = std.io.getStdErr().writer();
 const MAX_SOUNDS_DEFAULT: u32 = 15;
 
 const Trigger = struct {
-    sounds: std.ArrayList(*std.ArrayList(*ma.ma_sound)) = undefined,
+    sounds: std.ArrayList(std.ArrayList(*ma.ma_sound)) = undefined,
 
     pub fn init(self: *Trigger, allocator: std.mem.Allocator) void {
-        self.sounds = std.ArrayList(*std.ArrayList(*ma.ma_sound)).init(allocator);
+        self.sounds = std.ArrayList(std.ArrayList(*ma.ma_sound)).init(allocator);
     }
 
     pub fn deinit(self: *Trigger, allocator: std.mem.Allocator) void {
@@ -30,21 +30,18 @@ const Trigger = struct {
 
     pub fn load_sound(self: *Trigger, file_path: []const u8, max_sounds: u32, engine: *ma.ma_engine, allocator: std.mem.Allocator) !void {
         // Create sound arraylist
-        const sound = try allocator.create(std.ArrayList(*ma.ma_sound));
+        var sound = std.ArrayList(*ma.ma_sound).init(allocator);
 
         // File path should be checked already with the lua plugin
         const c_file_path = try std.fmt.allocPrintZ(allocator, "{s}", .{file_path});
 
-        _ = try stderr.write(try std.fmt.allocPrintZ(allocator, "{d}", .{max_sounds}));
-
         for(0..max_sounds) |_| {
             const audio: *ma.ma_sound = try allocator.create(ma.ma_sound);
 
-            _ = try stderr.write(c_file_path);
             const result = ma.ma_sound_init_from_file(engine, c_file_path, 0, null, null, audio);
 
             if(result != ma.MA_SUCCESS) {
-                _ = try stderr.write(ma_get_error(result));
+                _ = stderr.write(ma_get_error(result)) catch {};
                 return;
             }
 
@@ -58,11 +55,11 @@ const Trigger = struct {
         const rand_index: usize = rand.intRangeLessThan(usize, 0, self.sounds.items.len) ;
         var sound: [*c] ma.ma_sound = undefined;
         
-        sound = @as([*c] ma.ma_sound, @ptrCast(self.sounds.items[rand_index]));
+        sound = @as([*c] ma.ma_sound, @ptrCast(&self.sounds.items[rand_index]));
 
-        if(ma.ma_sound_is_playing(sound)  == ma.MA_FALSE) {
-            if(ma.ma_sound_start(sound) != 0) {
-                stderr.print("Failed to play sound", .{}) catch {};
+        if(ma.ma_sound_is_playing(sound) == ma.MA_FALSE) {
+            if(ma.ma_sound_start(sound) != ma.MA_SUCCESS) {
+                stderr.print("Failed to play sound\n", .{}) catch {};
             }
         }
     }
@@ -183,11 +180,7 @@ pub fn load_sound(trigger_name: []const u8, file_path: []const u8, max_sounds: u
 pub fn play_sound(trigger_name: []const u8, sound_map: *std.StringHashMap(Trigger), rand: *const std.Random) void {
     const trigger = sound_map.get(trigger_name);
     if(trigger != null) {
-        for (0..10) |i| {
-            std.debug.print("{d}", .{i});
-            trigger.?.play_sound(rand);
-            std.time.sleep(1_000_000_00);
-        }
+        trigger.?.play_sound(rand);
     }
 }
 

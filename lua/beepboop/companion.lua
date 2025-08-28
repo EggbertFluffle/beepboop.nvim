@@ -22,7 +22,7 @@ local load_sound_files = function(self, theme)
 				"load_sound %s %s\n",
 				sound_map.trigger_name,
 				theme.sound_directory .. file_name)
-			print(command)
+			vim.print("sending: " .. command)
 			M.stdin:write(command)
 		end
 
@@ -42,17 +42,18 @@ M.initialize = function(self, config)
 	self.stdin = vim.uv.new_pipe(false)
 	self.stderr = vim.uv.new_pipe(false)
 
-	self.handle, self.pid = vim.uv.spawn(config.binary_path, {
+	-- Start the companion binary
+	self.handle, self.pid = vim.uv.spawn(config.binary_path,
+		{
 			stdio = { self.stdin , nil, self.stderr },
 			detached = true
-		},
-		function (_, _)
-			self:cleanup()
+		}, function (code, signal)
+			vim.print("companion exited", "error code: " .. code, "signal: " .. signal)
 		end)
 
-	self.stderr:read_start(function(err, chunk)
-		print(chunk)
-	end) 
+	self.stderr:read_start(function(_, chunk)
+		vim.print(chunk, 0)
+	end)
 
 	assert(self.handle and self.handle:is_active(), "Companion binary could not be started!")
 
@@ -62,63 +63,63 @@ M.initialize = function(self, config)
 	vim.api.nvim_create_autocmd("VimLeavePre", {
 		group = "beepboop_core",
 		callback = function (_)
-			self:cleanup()
+			self:send_command("quit")
 		end
 	})
 end
 
 ---@param config Config
 local download_binary = function (config)
+	print("Trying to download binary")
 	print("well get there lol")
 end
 
 ---@param config Config
 M.validate = function (config)
 	if vim.fn.executable(config.binary_path) == 0 then
-		if vim.fn.executable("boopbeep") == 1 then
-			config.binary_path = "boopbeep"
-		else
-			download_binary(config)
-		end
+		download_binary(config)
 	end
+end
+
+---@param self Companion
+---@param command string Command to send to companion binary
+M.send_command = function (self, command)
+	vim.print(command)
+	self.stdin:write(command .. "\n")
 end
 
 ---@param self Companion
 ---@param trigger_name string Name of sound trigger
 M.play_sound = function (self, trigger_name)
-	local command = "play_sound " .. trigger_name .. "\n"
-	self.stdin:write(command)
+	self:send_command("play_sound " .. trigger_name)
 end
 
 ---@param self Companion
 ---@param volume integer
 M.set_volume = function (self, volume)
-	local command = string.format("set_master_volume %d\n", volume)
-	self.stdin:write(command)
+	local command = string.format("set_master_volume %d", volume)
+	self:send_command(command)
 end
 
 ---@param self Companion
 M.mute = function(self)
-	self.stdin:write("mute\n");
+	self:send_command("mute");
 end
 
 ---@param self Companion
 M.unmute = function(self)
-	self.stdin:write("unmute\n");
+	self:send_command("unmute");
 end
 
 ---@param self Companion
 M.toggle_mute = function(self)
-	self.stdin:write("toggle_mute\n");
+	self:send_command("toggle_mute");
 end
 
 ---Cleaup companion binary and related resources
 ---@param self Companion
 M.cleanup = function (self)
-	self.stdin:write("quit\n")
-
-	self.stdin:close();
-	self.stderr:close();
+	self:send_command("quit")
 end
 
 return M

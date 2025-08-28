@@ -117,7 +117,6 @@ M.validate = function (config)
 			config.theme = load_local_theme(theme_uri .. path_seperator)
 			config.theme.sound_directory = theme_uri .. string.format("%ssounds%s", path_seperator, path_seperator)
 		elseif string.find(theme_uri, "[a-z]*://[^ >,;]*") ~= nil then -- Should be a url otherwise
-			-- TODO: Implement remote themes
 			config.theme = load_remote_theme(theme_uri, config.theme_directory)
 		else
 			error(string.format("Theme %s is neither a valid directory or url", theme_uri))
