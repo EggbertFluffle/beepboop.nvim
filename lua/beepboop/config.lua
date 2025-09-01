@@ -30,7 +30,6 @@ M.validate = function (config)
 		{ config.theme_directory, "string" }
 	})
 
-	config.theme_directory = utils.trailing_directory_slash(config.theme_directory)
 	theme.validate(config)
 end
 

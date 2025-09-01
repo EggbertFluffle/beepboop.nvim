@@ -2,7 +2,6 @@
 ---@module 'theme'
 
 local utils = require("beepboop.utils")
-local path_seperator = utils.path_seperator
 
 local M = {}
 
@@ -12,7 +11,7 @@ local M = {}
 ---@field max_sounds? integer The max number of sounds that can be played at once
 ---@field cooldown? integer The cooldown after an audio cue before it can play again, 0 indicated none
 local default_theme = {
-	sound_directory = vim.fn.stdpath("config") .. path_seperator .. "sounds" .. path_seperator,
+	sound_directory = vim.fn.stdpath("config") .. utils.path_seperator .. "sounds" .. utils.path_seperator,
 	max_sounds = 15,
 	cooldown = 0
 }
@@ -61,7 +60,7 @@ local validate_sound_maps = function (theme)
 
 		for _, sound in ipairs(sound_map.sounds) do
 			local sound_path = theme.sound_directory .. sound
-			assert(vim.fn.filereadable(sound_path) == 1, "Sound file \"%s\" either doesn't exist or is not readable")
+			assert(vim.fn.filereadable(sound_path) == 1, string.format("Sound file \"%s\" either doesn't exist or is not readable", sound_path))
 		end
 
 		if sound_maps.key_map then
@@ -92,10 +91,10 @@ end
 ---@return Theme
 local load_remote_theme = function (url, themes_directory)
 	-- Look for theme if it already exists
-	local folder = utils.folder_from_remote_repo(url)
+	local directory_name = utils.directory_name_from_remote_url(url)
 
-	if vim.fn.isdirectory(themes_directory .. folder) == 0 then
-		local output = vim.fn.system(string.format("git clone %s %s", url, themes_directory .. folder))
+	if vim.fn.isdirectory(themes_directory .. directory_name) == 0 then
+		local output = vim.fn.system(string.format("git clone %s %s", url, themes_directory .. directory_name))
 
 		if vim.v.shell_error ~= 0 then
 			error(string.format("Clone of %s could not be completed: %s", url, output))
@@ -103,8 +102,9 @@ local load_remote_theme = function (url, themes_directory)
 	end
 
 	-- TODO: Check for updates via git fetch or smth
-
-	return load_local_theme(themes_directory .. folder .. path_seperator)
+	local theme = utils.read_json(themes_directory .. directory_name .. utils.path_seperator .. "theme.json")
+	theme.sound_directory = themes_directory .. directory_name .. utils.path_seperator .. "sounds" .. utils.path_seperator
+	return theme
 end
 
 ---@param config Config
@@ -114,8 +114,8 @@ M.validate = function (config)
 
 		if vim.fn.isdirectory(theme_uri) == 1 then
 
-			config.theme = load_local_theme(theme_uri .. path_seperator)
-			config.theme.sound_directory = theme_uri .. string.format("%ssounds%s", path_seperator, path_seperator)
+			config.theme = load_local_theme(theme_uri .. utils.path_seperator)
+			config.theme.sound_directory = theme_uri .. string.format("%ssounds%s", utils.path_seperator, utils.path_seperator)
 		elseif string.find(theme_uri, "[a-z]*://[^ >,;]*") ~= nil then -- Should be a url otherwise
 			config.theme = load_remote_theme(theme_uri, config.theme_directory)
 		else
@@ -133,8 +133,8 @@ M.validate = function (config)
 		string.format("Sound directory \"%s\" is not a directory or is not readable", config.theme.sound_directory))
 
 	local last_seperator = string.sub(config.theme.sound_directory, -1)
-	if last_seperator ~= path_seperator then
-		config.theme.sound_directory = config.theme.sound_directory .. path_seperator
+	if last_seperator ~= utils.path_seperator then
+		config.theme.sound_directory = config.theme.sound_directory .. utils.path_seperator
 	end
 
 	validate_sound_maps(config.theme --[[@as Theme]])

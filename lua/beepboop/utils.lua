@@ -38,7 +38,7 @@ end
 
 ---@param url string
 ---@return string
-M.folder_from_remote_repo = function (url)
+M.directory_name_from_remote_url = function (url)
 	if string.sub(url, -1) == "/" then
 		url = string.sub(url, 1, -2)
 	end

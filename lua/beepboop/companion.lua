@@ -22,7 +22,6 @@ local load_sound_files = function(self, theme)
 				"load_sound %s %s\n",
 				sound_map.trigger_name,
 				theme.sound_directory .. file_name)
-			vim.print("sending: " .. command)
 			M.stdin:write(command)
 		end
 
@@ -70,8 +69,14 @@ end
 
 ---@param config Config
 local download_binary = function (config)
-	print("Trying to download binary")
-	print("well get there lol")
+	vim.print("Attempting to download binary")
+	vim.print("well get there lol")
+end
+
+---@param config Config
+local build_binary = function (config) 
+	vim.print("Attempting to build binary")
+	vim.print("well get there lol")
 end
 
 ---@param config Config
@@ -84,7 +89,6 @@ end
 ---@param self Companion
 ---@param command string Command to send to companion binary
 M.send_command = function (self, command)
-	vim.print(command)
 	self.stdin:write(command .. "\n")
 end
 

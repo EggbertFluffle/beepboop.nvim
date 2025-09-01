@@ -9,3 +9,6 @@ uninstall:
 
 clean:
 	rm ./zig-out/bin/boopbeep
+
+clean_themes:
+	rm -rf ~/.local/share/nvim/beepboop/themes/*

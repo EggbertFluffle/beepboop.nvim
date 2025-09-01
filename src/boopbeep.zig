@@ -53,15 +53,33 @@ const Trigger = struct {
 
     pub fn play_sound(self: *const Trigger, rand: *const std.Random) void {
         const rand_index: usize = rand.intRangeLessThan(usize, 0, self.sounds.items.len) ;
-        var sound: [*c] ma.ma_sound = undefined;
-        
-        sound = @as([*c] ma.ma_sound, @ptrCast(&self.sounds.items[rand_index]));
+        const sound: std.ArrayList(*ma.ma_sound) = self.sounds.items[rand_index];
 
-        if(ma.ma_sound_is_playing(sound) == ma.MA_FALSE) {
-            if(ma.ma_sound_start(sound) != ma.MA_SUCCESS) {
-                stderr.print("Failed to play sound\n", .{}) catch {};
+        for(sound.items) |s| {
+            const sound_c_ptr: [*c]ma.ma_sound = @ptrCast(s);
+            
+            if(ma.ma_sound_is_playing(sound_c_ptr) == ma.MA_FALSE) {
+                if(ma.ma_sound_start(sound_c_ptr) != ma.MA_SUCCESS) {
+                    stderr.print("Failed to play sound\n", .{}) catch {};
+                } else {
+                    break;
+                }
             }
         }
+    }
+
+    pub fn is_playing(self: *const Trigger) bool {
+        for(self.sounds) |sound| {
+            for(sound.items) |s| {
+                const sound_c_ptr: [*c]ma.ma_sound = @ptrCast(s);
+
+                if(ma.ma_sound_is_playing(sound_c_ptr) == ma.MA_TRUE) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 };
 
@@ -157,6 +175,17 @@ pub fn main() void {
         // Use this to reduce the performance impact
         // look into better solution though
         // std.time.sleep(1 * std.time.ns_per_s);
+    }
+
+    const triggers = sound_map.iterator();
+    var next = triggers.next();
+
+    while(next.? != null) {
+        while(next.?.value_ptr.is_playing()) {
+            // Sleep for 1s
+            std.Thread.sleep(1_000_000_000);
+        }
+        next = triggers.next();
     }
 
     std.process.exit(0);
