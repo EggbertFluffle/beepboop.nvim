@@ -26,7 +26,7 @@ local load_sound_files = function(self, theme)
 		end
 
 		local command = string.format(
-			"set_sound_volume %s %d\n",
+			"trigger_volume %s %d\n",
 			sound_map.trigger_name,
 			128 * (sound_map.volume / 100)
 		)
@@ -42,16 +42,18 @@ M.initialize = function(self, config)
 	self.stderr = vim.uv.new_pipe(false)
 
 	-- Start the companion binary
-	self.handle, self.pid = vim.uv.spawn(config.binary_path,
+	vim.print("executing " .. config.binary_path .. config.binary_name)
+	self.handle, self.pid = vim.uv.spawn(config.binary_path .. config.binary_name,
 		{
 			stdio = { self.stdin , nil, self.stderr },
 			detached = true
 		}, function (code, signal)
-			vim.print("companion exited", "error code: " .. code, "signal: " .. signal)
+			vim.print("exit code: " .. code)
+			vim.print("exit signal: " .. signal)
 		end)
 
 	self.stderr:read_start(function(_, chunk)
-		vim.print(chunk, 0)
+		-- vim.print(chunk, 0)
 	end)
 
 	assert(self.handle and self.handle:is_active(), "Companion binary could not be started!")
@@ -81,7 +83,7 @@ end
 
 ---@param config Config
 M.validate = function (config)
-	if vim.fn.executable(config.binary_path) == 0 then
+	if vim.fn.executable(config.binary_path .. config.binary_name) == 0 then
 		download_binary(config)
 	end
 end
@@ -107,17 +109,18 @@ end
 
 ---@param self Companion
 M.mute = function(self)
-	self:send_command("mute");
+	vim.print("This is a test")
+	self:send_command("mute")
 end
 
 ---@param self Companion
 M.unmute = function(self)
-	self:send_command("unmute");
+	self:send_command("unmute")
 end
 
 ---@param self Companion
 M.toggle_mute = function(self)
-	self:send_command("toggle_mute");
+	self:send_command("toggle_mute")
 end
 
 ---Cleaup companion binary and related resources

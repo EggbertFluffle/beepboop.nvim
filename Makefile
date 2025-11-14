@@ -1,14 +1,18 @@
-main: ./src/boopbeep.zig
-	zig build
+debug: ./src/boopbeep.zig
+	zig build -Dstrip=false
 
-install: main
-	zig build -p /home/eggbert/.local/share/nvim/beepboop/
+release: ./src/boopbeep.zig
+	zig build -Dstrip=true
+
+install:
+	mkdir -p ~/.local/share/nvim/beepboop/bin/
+	cp ./zig-out/bin/* ~/.local/share/nvim/beepboop/bin/
 
 uninstall:
-	rm -rf /home/eggbert/.local/share/nvim/beepboop/bin
+	rm -rf ~/.local/share/nvim/beepboop/bin/*
 
 clean:
-	rm ./zig-out/bin/boopbeep
+	rm ./zig-out/bin/*
 
 clean_themes:
 	rm -rf ~/.local/share/nvim/beepboop/themes/*

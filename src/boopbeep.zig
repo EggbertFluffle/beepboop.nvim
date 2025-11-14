@@ -8,10 +8,19 @@ pub const ma = @cImport({
     @cInclude("miniaudio.h");
 });
 
-// System globals
-const stdout = std.io.getStdOut().writer();
-const stdin = std.io.getStdIn().reader();
-const stderr = std.io.getStdErr().writer();
+pub fn oomPanic() noreturn {
+  std.log.err("Out of memory error, exiting with 1", .{});
+  std.process.exit(1);
+}
+
+var stdin_buffer: [512]u8 = undefined;
+var stdin_reader_wrapper: std.fs.File.Reader = undefined;
+var stdin: *std.Io.Reader = undefined;
+
+var stderr_buffer: [512]u8 = undefined;
+var stderr_writer: std.fs.File.Writer = undefined;
+var stderr: *std.Io.Writer = undefined;
+
 
 const MAX_SOUNDS_DEFAULT: u32 = 15;
 
@@ -19,7 +28,8 @@ const Trigger = struct {
     sounds: std.ArrayList(std.ArrayList(*ma.ma_sound)) = undefined,
 
     pub fn init(self: *Trigger, allocator: std.mem.Allocator) void {
-        self.sounds = std.ArrayList(std.ArrayList(*ma.ma_sound)).init(allocator);
+        // TODO: Make not a magic number
+        self.sounds = std.ArrayList(std.ArrayList(*ma.ma_sound)).initCapacity(allocator, 16) catch { oomPanic(); }; 
     }
 
     pub fn deinit(self: *Trigger, allocator: std.mem.Allocator) void {
@@ -28,27 +38,40 @@ const Trigger = struct {
         }
     }
 
-    pub fn load_sound(self: *Trigger, file_path: []const u8, max_sounds: u32, engine: *ma.ma_engine, allocator: std.mem.Allocator) !void {
+    pub fn set_volume(self: *Trigger, volume: f32) void {
+        for (self.sounds.items) |sound| {
+            for(sound.items) |s| {
+                ma.ma_sound_set_volume(s, volume);
+            }
+        }
+    }
+
+    pub fn load_sound(self: *Trigger, file_path: []const u8, max_sounds: u32, engine: *ma.ma_engine, allocator: std.mem.Allocator) void {
         // Create sound arraylist
-        var sound = std.ArrayList(*ma.ma_sound).init(allocator);
+        
+        errdefer oomPanic();
+        
+        // TODO: Remove magic number
+        var sound = try std.ArrayList(*ma.ma_sound).initCapacity(allocator, 4);
 
         // File path should be checked already with the lua plugin
-        const c_file_path = try std.fmt.allocPrintZ(allocator, "{s}", .{file_path});
+        const c_file_path = try std.fmt.allocPrintSentinel(allocator, "{s}", .{file_path}, 0);
 
         for(0..max_sounds) |_| {
             const audio: *ma.ma_sound = try allocator.create(ma.ma_sound);
 
+            std.debug.print("{s}", .{c_file_path});
             const result = ma.ma_sound_init_from_file(engine, c_file_path, 0, null, null, audio);
 
             if(result != ma.MA_SUCCESS) {
-                _ = stderr.write(ma_get_error(result)) catch {};
+                _ = try stderr.write(ma_get_error(result));
                 return;
             }
 
-            try sound.append(audio);
+            try sound.append(allocator, audio);
         }
 
-        try self.sounds.append(sound);
+        try self.sounds.append(allocator, sound);
     }
 
     pub fn play_sound(self: *const Trigger, rand: *const std.Random) void {
@@ -69,7 +92,7 @@ const Trigger = struct {
     }
 
     pub fn is_playing(self: *const Trigger) bool {
-        for(self.sounds) |sound| {
+        for(self.sounds.items) |sound| {
             for(sound.items) |s| {
                 const sound_c_ptr: [*c]ma.ma_sound = @ptrCast(s);
 
@@ -86,6 +109,12 @@ const Trigger = struct {
 pub fn main() void {
     var quit: bool = false;
     var mute: bool = false;
+
+    // Initialize readers and writters for stderr and stdin
+    stdin_reader_wrapper = std.fs.File.stdin().reader(&stdin_buffer);
+    stdin = &stdin_reader_wrapper.interface;
+    stderr_writer = std.fs.File.stderr().writer(&stderr_buffer);
+    stderr = &stderr_writer.interface;
 
     // Create the pseudo random number generator
     var prng = std.Random.DefaultPrng.init(@as(u64, @intCast(std.time.microTimestamp())));
@@ -109,19 +138,13 @@ pub fn main() void {
 
     // Or if a sound is still playing
     while (!quit) {
-        var input_buffer: [512]u8 = [_]u8{0} ** 512;
-        const input = stdin.readUntilDelimiterOrEof(input_buffer[0..], '\n') catch {
+        const input = stdin.takeDelimiterExclusive('\n') catch {
             stderr.print("Failed to read argument list", .{}) catch {};
             continue;
         };
 
-        if (input == null) {
-            stderr.print("Failed to read argument list", .{}) catch {};
-            continue;
-        }
-
         const delimiter = [1]u8{' '};
-        var args = std.mem.tokenizeSequence(u8, input.?, delimiter[0..]);
+        var args = std.mem.tokenizeSequence(u8, input, delimiter[0..]);
         const command = args.next();
 
         if(command == null) {
@@ -137,7 +160,7 @@ pub fn main() void {
 
             // Probably a better way to validate input
             if(trigger_name == null or file_path == null) {
-                stderr.print("Incorrect use of \"load_sound\": usage $ load_sound <trigger_name> <file_path>", .{}) catch {};
+                _ = stderr.write("Incorrect use of \"load_sound\": usage $ load_sound <trigger_name> <file_path>") catch { oomPanic(); };
                 continue;
             }
 
@@ -150,18 +173,54 @@ pub fn main() void {
             const trigger_name = args.next();
 
             if(trigger_name == null) {
-                stderr.print("Incorrect use of \"load_sound\": usage $ load_sound <trigger_name> <file_path>", .{}) catch {};
+                _ = stderr.write("Incorrect use of \"load_sound\": usage $ load_sound <trigger_name> <file_path>") catch { oomPanic(); };
                 continue;
             }
 
-            if(true) {
+            if(!mute) {
                 play_sound(trigger_name.?, &sound_map, &rand);
             }
+        } else if (std.mem.eql(u8, command.?, "master_volume")) {
+            const vol_arg = args.next();
+
+            if(vol_arg == null) {
+                _ = stderr.write("Incorrect use of \"master_volume\": usage $ master_volume <volume 1-100>") catch { oomPanic(); };
+                continue;
+            }
+            
+            var volume: f32 = std.fmt.parseFloat(f32, vol_arg.?) catch 1.0;
+            volume = if (volume > 1.0) 1.0 else (if (volume < 0.0) 0.0 else volume);
+
+            if(ma.ma_engine_set_volume(&engine, volume) != ma.MA_SUCCESS) {
+                _ = stderr.write("Volume unable to be set") catch { oomPanic(); };
+                continue;
+            }
+        } else if (std.mem.eql(u8, command.?, "trigger_volume")) {
+            const trigger_name = args.next();
+            const vol_arg = args.next();
+
+            if(trigger_name == null or vol_arg == null) {
+                _ = stderr.write("Incorrect use of \"trigger_volume\": usage $ sound_volume <trigger_name> <volume 1-100>") catch { oomPanic(); };
+                continue;
+            }
+            
+            var volume: f32 = std.fmt.parseFloat(f32, vol_arg.?) catch 1.0;
+            volume = if (volume > 1.0) 1.0 else (if (volume < 0.0) 0.0 else volume);
+
+            var trigger = sound_map.get(trigger_name.?);
+            if(trigger == null) {
+                stderr.print("Sound \"{s}\" does not exist as a loaded sound", .{trigger_name.?}) catch { oomPanic(); };
+            }
+
+            trigger.?.set_volume(volume);
         } else if (std.mem.eql(u8, command.?, "mute")) {
+            _ = stderr.write("Muting") catch { oomPanic(); };
             mute = true;
         } else if (std.mem.eql(u8, command.?, "unmute")) {
+            _ = stderr.write("Unmuting") catch { oomPanic(); };
             mute = false;
         } else if (std.mem.eql(u8, command.?, "toggle_mute")) {
+            _ = stderr.write("Toggling mute") catch { oomPanic(); };
             mute = !mute;
         } else if (std.mem.eql(u8, command.?, "quit")) {
             quit = true;
@@ -177,10 +236,10 @@ pub fn main() void {
         // std.time.sleep(1 * std.time.ns_per_s);
     }
 
-    const triggers = sound_map.iterator();
+    var triggers = sound_map.iterator();
     var next = triggers.next();
 
-    while(next.? != null) {
+    while(next != null) {
         while(next.?.value_ptr.is_playing()) {
             // Sleep for 1s
             std.Thread.sleep(1_000_000_000);
@@ -196,12 +255,12 @@ pub fn load_sound(trigger_name: []const u8, file_path: []const u8, max_sounds: u
         var trigger = Trigger{};
         trigger.init(allocator);
         sound_map.put(trigger_name, trigger) catch {
-            stderr.print("Allocator error", .{}) catch {};
+            _ = stderr.write("Allocator error") catch { oomPanic(); };
         };
         break :blk sound_map.getPtr(trigger_name); 
     };
 
-    sound.?.load_sound(file_path, max_sounds, engine, allocator) catch {};
+    sound.?.load_sound(file_path, max_sounds, engine, allocator);
 
     // Take in a max sounds
 }

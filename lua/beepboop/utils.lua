@@ -12,6 +12,16 @@ M.get_os = function ()
 	return os
 end
 
+---@return string
+M.get_arch = function ()
+	local arch = jit.arch:lower()
+	if arch == "x64" then
+		arch = "x86"
+	end
+
+	return arch
+end
+
 ---@type string
 M.path_seperator = M.get_os() == "windows" and "\\" or "/"
 

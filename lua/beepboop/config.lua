@@ -5,7 +5,6 @@ local M = {}
 local theme = require("beepboop.theme")
 
 local utils = require("beepboop.utils")
-local path_seperator = utils.path_seperator
 
 ---@class Config
 ---@field enabled boolean
@@ -16,8 +15,11 @@ local path_seperator = utils.path_seperator
 M.default_config = {
 	enabled = true,
 	volume = 100,
-	binary_path = vim.fn.stdpath("data") .. string.format("%sbeepboop%sbin%sboopbeep", path_seperator, path_seperator, path_seperator),
-	theme_directory = vim.fn.stdpath("data") .. string.format("%sbeepboop%sthemes%s", path_seperator, path_seperator, path_seperator),
+	binary_name = "boopbeep-" .. utils.get_arch() .. "-" .. utils.get_os(),
+	binary_path = vim.fn.stdpath("data") ..
+		string.format("%sbeepboop%sbin%s", utils.path_seperator, utils.path_seperator, utils.path_seperator),
+	theme_directory = vim.fn.stdpath("data") ..
+		string.format("%sbeepboop%sthemes%s", utils.path_seperator, utils.path_seperator, utils.path_seperator),
 }
 
 ---Validate and correct any tolerable errors in the config
@@ -29,6 +31,9 @@ M.validate = function (config)
 		{ config.theme, { "table", "string" } },
 		{ config.theme_directory, "string" }
 	})
+
+	vim.print(config.binary_path)
+	vim.print(config.binary_name)
 
 	theme.validate(config)
 end

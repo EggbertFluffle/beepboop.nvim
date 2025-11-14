@@ -24,10 +24,11 @@ M.create_commands = function (companion)
 	vim.api.nvim_create_user_command("BeepBoopVolume", function (args)
 		local result = tonumber(args.args)
 
-		if type(result) == "number" and result >= 0 and result <= 100 then
+		if type(result) == "number" then
+			result = math.max(0, math.min(result, 100))
 			companion:set_volume(result)
 		else
-			print("Usage: BeepBoopVolume {number 0 - 100})")
+			error("Usage: BeepBoopVolume {number 0 - 100})")
 		end
 	end, {})
 end
