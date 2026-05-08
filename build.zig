@@ -1,14 +1,14 @@
 const std = @import("std");
 
 const cross_compile_targets = [_]std.Target.Query {
-    .{ .cpu_arch = .aarch64, .os_tag = .linux, .abi = .gnu },
+    // .{ .cpu_arch = .aarch64, .os_tag = .linux, .abi = .gnu },
     .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
     // .{ .cpu_arch = .aarch64, .os_tag = .macos, .abi = .gnu },
     // .{ .cpu_arch = .x86_64, .os_tag = .macos, .abi = .gnu },
-    .{ .cpu_arch = .x86_64, .os_tag = .windows, .abi = .gnu }
+    // .{ .cpu_arch = .x86_64, .os_tag = .windows, .abi = .gnu }
 };
 
-pub fn build_for_target(b: *std.Build, target: std.Build.ResolvedTarget, strip: bool) void {
+pub fn build_for_target(b: *std.Build, target: std.Build.ResolvedTarget) void {
     const arch = target.query.cpu_arch;
     const os = target.query.os_tag;
 
@@ -31,14 +31,18 @@ pub fn build_for_target(b: *std.Build, target: std.Build.ResolvedTarget, strip: 
         .root_source_file = b.path("src/boopbeep.zig"),
         .target = target,
         .optimize = .ReleaseSafe,
-        .strip = strip,
-        .link_libc = true,
+        .link_libc = true
     });
 
     root_mod.addCSourceFile(.{
-        .file = b.path("src/lib/miniaudio/miniaudio.c"),
+        .file = b.path("src/miniaudio.c"),
+        .flags = &.{
+            // "-DMA_IMPLEMENTATION",
+            // "-march=native",     // OR use this to auto-detect your CPU features
+            "-fno-sanitize=undefined",  // Clang 21 inserts UD2 traps; disable them
+        }
     });
-    root_mod.addIncludePath(b.path("src/lib/miniaudio/"));
+    root_mod.addIncludePath(b.path("lib/"));
     
     const exe = b.addExecutable(.{
         .name = target_name,
@@ -49,10 +53,7 @@ pub fn build_for_target(b: *std.Build, target: std.Build.ResolvedTarget, strip: 
 }
 
 pub fn build(b: *std.Build) void {
-    const strip = b.option(bool, "strip", "Strip debug information from compiled binaries") orelse false;
-
-    std.debug.print("Cross compiling with strip={s}\n", .{if (strip) "true" else "false"});
     for(cross_compile_targets) |target| {
-        build_for_target(b, b.resolveTargetQuery(target), strip);
+        build_for_target(b, b.resolveTargetQuery(target));
     }
 }
