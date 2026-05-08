@@ -28,7 +28,7 @@ pub fn build_for_target(b: *std.Build, target: std.Build.ResolvedTarget) void {
     }) catch "boopbeep";
 
     const root_mod = b.createModule(.{
-        .root_source_file = b.path("src/boopbeep.zig"),
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = .ReleaseSafe,
         .link_libc = true
