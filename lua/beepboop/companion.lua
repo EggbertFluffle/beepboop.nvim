@@ -42,15 +42,28 @@ M.initialize = function(self, config)
 	self.stderr = vim.uv.new_pipe(false)
 
 	-- Start the companion binary
-	vim.print("executing " .. config.binary_path .. config.binary_name)
-	self.handle, self.pid = vim.uv.spawn(config.binary_path .. config.binary_name,
+	local binary = vim.fs.joinpath(config.binary_path, config.binary_name)
+	local handle, pid_or_err = vim.uv.spawn(binary,
 		{
-			stdio = { self.stdin , nil, self.stderr },
+			stdio = {
+				self.stdin,
+				nil,
+				self.stderr
+			},
 			detached = true
-		}, function (code, signal)
+		},
+		function (code, signal)
 			vim.print("exit code: " .. code)
 			vim.print("exit signal: " .. signal)
-		end)
+		end
+	)
+
+	if not handle then
+		error("[beepboop] Starting companion failed: " .. pid_or_err --[[@as string]])
+	end
+
+	self.handle = handle
+	self.pid = pid_or_err --[[@as integer]]
 
 	self.stderr:read_start(function(_, chunk)
 		-- vim.print(chunk, 0)
@@ -71,20 +84,87 @@ end
 
 ---@param config Config
 local download_binary = function (config)
+	vim.print("how are we getting here")
 	vim.print("Attempting to download binary")
 	vim.print("well get there lol")
 end
 
 ---@param config Config
-local build_binary = function (config) 
-	vim.print("Attempting to build binary")
-	vim.print("well get there lol")
+local build_binary = function (config)
+	if vim.fn.executable("zig") == 0 then
+		error("[beepboop] Trying to build companion, could not find zig")
+	end
+
+	if vim.fn.executable("git") == 0 then
+		error("[beepboop] Trying to build companion, could not find git")
+	end
+
+	local zig_version_cmd, errmsg = vim.fn.system({"zig", "version"})
+	if not zig_version_cmd then
+		error("[beepboop] Could not find zig version: " .. errmsg)
+	end
+	local zig_version = zig_version_cmd:read("*l")
+	zig_version_cmd:close()
+
+	if zig_version ~= "0.16.0" then
+		error("[beepboop] Zig version mismatch for build. Require 0.16.0, found " .. zig_version)
+	end
+
+	local beepboop_dir = vim.fs.joinpath(vim.fn.stdpath("data"), "beepboop", "")
+	local ok = vim.fn.mkdir(beepboop_dir, "p")
+	if not ok then
+		error("[beepboop] Unable to make source directory for binary")
+	end
+
+	local build_dir = vim.fs.joinpath(beepboop_dir, "boopbeep")
+
+	-- Clone repository if it doesn't exist
+	if vim.fn.isdirectory(build_dir) == 0 then
+		local remote_url = "https://github.com/EggbertFluffle/boopbeep"
+
+		print(string.format("[beepboop] Cloning %s...", remote_url))
+
+		local result = vim.system({ "git", "clone", remote_url, build_dir }):wait()
+		if result.code ~= 0 then
+			error(string.format("[beepboop] git clone failed: %s", result.stderr))
+		end
+	end
+
+	local path = vim.fs.joinpath(build_dir, "zig-out", "bin")
+	local name = "boopbeep"
+
+	-- Build repository using zig if it isn't built
+	if not vim.fn.fs_stat(vim.fs.joinpath(path, name)) then
+		print("[beepboop] Building boopbeep to " .. build_dir .. "...")
+		local result = vim.system({ "zig", "build" }, { cwd = build_dir }):wait()
+		if result.code ~= 0 then
+			error(string.format("[beepboop] zig build failed: %s", result.stderr))
+		end
+	end
+
+	config.binary_path = path
+	config.binary_name = name
 end
 
 ---@param config Config
 M.validate = function (config)
-	if vim.fn.executable(config.binary_path .. config.binary_name) == 0 then
-		download_binary(config)
+	if config.binary_name == nil then
+		local full_name = "boopbeep-" .. utils.get_arch() .. "-" .. utils.get_os()
+		if vim.fn.executable(vim.fs.joinpath(config.binary_path, full_name)) == 0 then
+			config.binary_name = full_name
+		elseif vim.fn.executable(vim.fs.joinpath(config.binary_path, "beepboop")) == 0 then
+			config.binary_name = "beepboop"
+		end
+	end
+
+	if vim.fn.executable(vim.fs.joinpath(config.binary_path, config.binary_name)) == 0 then
+		if config.get_binary_method == "download" then
+			download_binary(config)
+		elseif config.get_binary_method == "build" then
+			build_binary(config)
+		elseif config.get_binary_method == "none" then
+			error("[beepboop] Companion not found. Get companion method nil")
+		end
 	end
 end
 
@@ -109,7 +189,6 @@ end
 
 ---@param self Companion
 M.mute = function(self)
-	vim.print("This is a test")
 	self:send_command("mute")
 end
 
@@ -123,7 +202,7 @@ M.toggle_mute = function(self)
 	self:send_command("toggle_mute")
 end
 
----Cleaup companion binary and related resources
+---Cleanup companion binary and related resources
 ---@param self Companion
 M.cleanup = function (self)
 	self:send_command("quit")

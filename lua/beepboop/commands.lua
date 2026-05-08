@@ -1,5 +1,4 @@
 --- Creates and executes user commands
---- @module 'commands'
 
 ---@class Commands
 local M = {}
@@ -28,7 +27,7 @@ M.create_commands = function (companion)
 			result = math.max(0, math.min(result, 100))
 			companion:set_volume(result)
 		else
-			error("Usage: BeepBoopVolume {number 0 - 100})")
+			error("[beepboop] Usage: BeepBoopVolume {number 0 - 100})")
 		end
 	end, {})
 end
