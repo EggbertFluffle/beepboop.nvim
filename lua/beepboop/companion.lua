@@ -97,19 +97,18 @@ local download_binary = function(config)
 		error("[beepboop] Unable to make bin directory for binary download")
 	end
 
-	print(string.format("[beepboop] Downloading %s...", download_url))
-	local curl_res= vim.system({ "curl", "-L", "-o", vim.fs.joinpath(bin_dir, binary_name), download_url }):wait()
-	if curl_res.code ~= 0 then
-		error(string.format("[beepboop] Failed to download binary: %s", curl_res.stderr))
-	end
+	if vim.fn.executable(vim.fs.joinpath(bin_dir, binary_name)) == 0 then
+		print(string.format("[beepboop] Downloading %s...", download_url))
+		local curl_res= vim.system({ "curl", "-L", "-o", vim.fs.joinpath(bin_dir, binary_name), download_url }):wait()
+		if curl_res.code ~= 0 then
+			error(string.format("[beepboop] Failed to download binary: %s", curl_res.stderr))
+		end
 
-	-- Make it executable
-	-- if not vim.uv.fs_chmod(bin_dir, 493) then -- 0755
-	-- 	error(string.format("[beepboop] Failed to make binary executable: %s", result.stderr))
-	-- end
-	local chmod_res= vim.system({ "chmod", "+x", vim.fs.joinpath(bin_dir, binary_name)}):wait()
-	if chmod_res.code ~= 0 then
-		error("[beepboop] Failed to make binary executable: " .. chmod_res.stderr)
+		-- Make it executable
+		local chmod_res= vim.system({ "chmod", "+x", vim.fs.joinpath(bin_dir, binary_name)}):wait()
+		if chmod_res.code ~= 0 then
+			error("[beepboop] Failed to make binary executable: " .. chmod_res.stderr)
+		end
 	end
 
 	config.binary_name = binary_name
