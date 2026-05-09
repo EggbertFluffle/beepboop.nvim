@@ -18,11 +18,8 @@ local load_sound_files = function(self, theme)
 
 	for _, sound_map in ipairs(theme.sound_maps) do
 		for _, file_name in ipairs(sound_map.sounds) do
-			local command = string.format(
-				"load_sound %s %s\n",
-				sound_map.trigger_name,
-				theme.sound_directory .. file_name)
-			M.stdin:write(command)
+			local file_path = vim.fs.joinpath(theme.sound_directory, file_name)
+			M:send_command({ "load_sound", sound_map.trigger_name, file_path })
 		end
 
 		local command = string.format(
@@ -83,10 +80,40 @@ M.initialize = function(self, config)
 end
 
 ---@param config Config
-local download_binary = function (config)
-	vim.print("how are we getting here")
-	vim.print("Attempting to download binary")
-	vim.print("well get there lol")
+local download_binary = function(config)
+	if vim.fn.executable("curl") == 0 then
+		error("[beepboop] curl is required to download the companion binary")
+	end
+
+	local latest_tag = "test"
+	local binary_name = "boopbeep-" .. utils.get_arch() .. "-" .. utils.get_os()
+	local download_url = string.format(
+		"https://github.com/EggbertFluffle/boopbeep/releases/download/%s/%s",
+		latest_tag, binary_name
+	)
+
+	local bin_dir = vim.fs.joinpath(vim.fn.stdpath("data"), "beepboop", "bin")
+	if not vim.fn.mkdir(bin_dir, "p") then
+		error("[beepboop] Unable to make bin directory for binary download")
+	end
+
+	print(string.format("[beepboop] Downloading %s...", download_url))
+	local curl_res= vim.system({ "curl", "-L", "-o", vim.fs.joinpath(bin_dir, binary_name), download_url }):wait()
+	if curl_res.code ~= 0 then
+		error(string.format("[beepboop] Failed to download binary: %s", curl_res.stderr))
+	end
+
+	-- Make it executable
+	-- if not vim.uv.fs_chmod(bin_dir, 493) then -- 0755
+	-- 	error(string.format("[beepboop] Failed to make binary executable: %s", result.stderr))
+	-- end
+	local chmod_res= vim.system({ "chmod", "+x", vim.fs.joinpath(bin_dir, binary_name)}):wait()
+	if chmod_res.code ~= 0 then
+		error("[beepboop] Failed to make binary executable: " .. chmod_res.stderr)
+	end
+
+	config.binary_name = binary_name
+	config.binary_path = bin_dir
 end
 
 ---@param config Config
@@ -99,20 +126,18 @@ local build_binary = function (config)
 		error("[beepboop] Trying to build companion, could not find git")
 	end
 
-	local zig_version_cmd, errmsg = vim.fn.system({"zig", "version"})
-	if not zig_version_cmd then
-		error("[beepboop] Could not find zig version: " .. errmsg)
+	local zig_version_result = vim.system({ "zig", "version" }):wait()
+	if zig_version_result.code ~= 0 then
+		error("[beepboop] Could not find zig version: " .. zig_version_result.stderr)
 	end
-	local zig_version = zig_version_cmd:read("*l")
-	zig_version_cmd:close()
+	local zig_version = vim.trim(zig_version_result.stdout)
 
 	if zig_version ~= "0.16.0" then
 		error("[beepboop] Zig version mismatch for build. Require 0.16.0, found " .. zig_version)
 	end
 
 	local beepboop_dir = vim.fs.joinpath(vim.fn.stdpath("data"), "beepboop", "")
-	local ok = vim.fn.mkdir(beepboop_dir, "p")
-	if not ok then
+	if not vim.fn.mkdir(beepboop_dir, "p") then
 		error("[beepboop] Unable to make source directory for binary")
 	end
 
@@ -134,7 +159,7 @@ local build_binary = function (config)
 	local name = "boopbeep"
 
 	-- Build repository using zig if it isn't built
-	if not vim.fn.fs_stat(vim.fs.joinpath(path, name)) then
+	if not vim.uv.fs_stat(vim.fs.joinpath(path, name)) then
 		print("[beepboop] Building boopbeep to " .. build_dir .. "...")
 		local result = vim.system({ "zig", "build" }, { cwd = build_dir }):wait()
 		if result.code ~= 0 then
@@ -169,22 +194,25 @@ M.validate = function (config)
 end
 
 ---@param self Companion
----@param command string Command to send to companion binary
+---@param command string|string[] Command to send to companion binary
 M.send_command = function (self, command)
-	self.stdin:write(command .. "\n")
+	if type(command) == "table" then
+		command = table.concat(command --[[@as string[] ]], " ")
+	end
+
+	self.stdin:write(command --[[@as string]] .. "\n")
 end
 
 ---@param self Companion
 ---@param trigger_name string Name of sound trigger
 M.play_sound = function (self, trigger_name)
-	self:send_command("play_sound " .. trigger_name)
+	self:send_command({ "play_sound", trigger_name })
 end
 
 ---@param self Companion
 ---@param volume integer
 M.set_volume = function (self, volume)
-	local command = string.format("set_master_volume %d", volume)
-	self:send_command(command)
+	self:send_command({ "set_master_volume", tostring(volume) })
 end
 
 ---@param self Companion

@@ -59,7 +59,7 @@ local validate_sound_maps = function (theme)
 		end
 
 		for _, sound in ipairs(sound_map.sounds) do
-			local sound_path = theme.sound_directory .. sound
+			local sound_path = vim.fs.joinpath(theme.sound_directory, sound)
 			assert(vim.fn.filereadable(sound_path) == 1, string.format("Sound file \"%s\" either doesn't exist or is not readable", sound_path))
 		end
 
@@ -79,11 +79,14 @@ end
 ---@param theme_directory string
 ---@return Theme
 local load_local_theme = function (theme_directory)
-	assert(
-		vim.fn.filereadable(theme_directory .. "theme.json") == 1,
-		string.format("File theme.json not found found or readable in path \"%s\"", theme_directory))
+	local theme_json = vim.fs.joinpath(theme_directory, "theme.json")
+	if not vim.uv.fs_stat(theme_json) then
+		error(string.format("Cannot find file \"%s\"", theme_json))
+	end
 
-	return utils.read_json(theme_directory .. "theme.json")
+	local theme = utils.read_json(theme_json)
+	theme.sound_directory = vim.fs.joinpath(theme_directory, "sounds")
+	return theme
 end
 
 ---@param url string
@@ -95,7 +98,8 @@ local load_remote_theme = function (url, themes_directory)
 
 	if not vim.uv.fs_stat(vim.fs.joinpath(themes_directory, directory_name)) then
 		print(string.format("[beepboop] Cloning %s...", url))
-		local result = vim.system({ "git", "clone", url, themes_directory }):wait()
+
+		local result = vim.system({ "git", "clone", url, vim.fs.joinpath(themes_directory, directory_name) }):wait()
 
 		if result.code ~= 0 then
 			error(string.format("[beepboop] Clone of %s could not be completed: %s", url, result.stderr))
@@ -113,10 +117,8 @@ M.validate = function (config)
 	if type(config.theme) == "string" then -- Is a path or url and must be validated
 		local theme_uri = config.theme --[[@as string]]
 
-		if not vim.uv.fs_stat(theme_uri) then
+		if vim.uv.fs_stat(theme_uri) then
 			config.theme = load_local_theme(theme_uri)
-
-			config.theme.sound_directory = vim.fs.joinpath(theme_uri, "sounds")
 		elseif string.find(theme_uri, "[a-z]*://[^ >,;]*") ~= nil then -- Should be a url otherwise
 			config.theme = load_remote_theme(theme_uri, config.theme_directory)
 		else
@@ -124,14 +126,14 @@ M.validate = function (config)
 		end
 	end
 
+	if not vim.uv.fs_stat(config.theme.sound_directory) then
+		error(string.format("Sound directory \"%s\" is not a directory or is not readable", config.theme.sound_directory))
+	end
+
 	vim.validate({
 		{ config.theme, "table" },
 		{ config.theme.sound_maps, "table" } })
 	config.theme = vim.tbl_deep_extend("force", default_theme, config.theme)
-
-	if not vim.uv.fs_stat(config.theme.sound_directory) then
-		error(string.format("Sound directory \"%s\" is not a directory or is not readable", config.theme.sound_directory))
-	end
 
 	validate_sound_maps(config.theme --[[@as Theme]])
 end

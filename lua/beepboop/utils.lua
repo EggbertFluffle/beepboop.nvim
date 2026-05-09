@@ -1,5 +1,4 @@
 ---Utilities for beepboop development
----@module 'utils'
 
 local M = {}
 
@@ -22,9 +21,6 @@ M.get_arch = function ()
 	return arch
 end
 
----@type string
-M.path_seperator = M.get_os() == "windows" and "\\" or "/"
-
 ---@param path string
 ---@return Theme
 M.read_json = function (path)
@@ -35,15 +31,6 @@ M.read_json = function (path)
 	file:close()
 
     return json
-end
-
----@param directory_path string
-M.trailing_directory_slash = function (directory_path)
-	local path_seperator = M.path_seperator
-	if string.sub(directory_path, -1) ~= path_seperator then
-		directory_path = directory_path .. path_seperator
-	end
-	return directory_path
 end
 
 ---@param url string
