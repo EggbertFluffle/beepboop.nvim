@@ -6,17 +6,17 @@ local theme = require("beepboop.theme")
 local utils = require("beepboop.utils")
 
 ---@class Config
----@field enabled boolean
----@field binary_path ?string Path to boopbeep companion binary
+---@field mute boolean
+---@field binary_path string Path to boopbeep companion binary
 ---@field theme_directory string Where to look for and to download remote themes
 ---@field volume integer Master volume of BeepBoop
 ---@field theme string|Theme URL or file path to a theme directory containing a theme.json
 ---@field get_binary_method "none"|"build"|"download" How to get the binary if it doesn't exist
 M.default_config = {
 	enabled = true,
+	mute = false,
 	volume = 100,
-	binary_name = nil,
-	binary_path = vim.fs.joinpath(vim.fn.stdpath("data"), "beepboop", "bin"),
+	binary_path = "",
 	theme_directory = vim.fs.joinpath(vim.fn.stdpath("data"), "beepboop", "themes")
 }
 

@@ -10,7 +10,9 @@ local M = {}
 ---@field sound_directory string Directory to source sound files from
 ---@field max_sounds? integer The max number of sounds that can be played at once
 ---@field cooldown? integer The cooldown after an audio cue before it can play again, 0 indicated none
+---@field name string
 local default_theme = {
+	name = "untitled",
 	sound_directory = vim.fs.joinpath(vim.fn.stdpath("config"), "sounds"),
 	max_sounds = 15,
 	cooldown = 0
@@ -60,14 +62,17 @@ local validate_sound_maps = function (theme)
 
 		for _, sound in ipairs(sound_map.sounds) do
 			local sound_path = vim.fs.joinpath(theme.sound_directory, sound)
-			assert(vim.fn.filereadable(sound_path) == 1, string.format("Sound file \"%s\" either doesn't exist or is not readable", sound_path))
+			if not vim.uv.fs_stat(sound_path) then
+				error(string.format("Sound file \"%s\" either doesn't exist or is not readable", sound_path))
+			end
 		end
 
 		if sound_maps.key_map then
 			vim.validate({
 				{ key_map.mode, "string" },
 				{ key_map.key_chord, "string" },
-				{ key_map.blocking, { "boolean", "nil" } } })
+				{ key_map.blocking, { "boolean", "nil" } }
+			})
 
 			if key_map.blocking == nil then
 				key_map.blocking = false

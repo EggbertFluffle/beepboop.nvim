@@ -5,31 +5,33 @@ local M = {}
 
 --- @param companion Companion
 M.create_commands = function (companion)
-	--- Mute
 	vim.api.nvim_create_user_command("BeepBoopMute", function ()
-		companion:mute()
+		companion:set_mute(true)
 	end, {})
 
 	vim.api.nvim_create_user_command("BeepBoopUnmute", function ()
-		companion:unmute()
+		companion:set_mute(false)
 	end, {})
 
 	vim.api.nvim_create_user_command("BeepBoopToggleMute", function ()
 		companion:toggle_mute()
 	end, {})
 
-	--- Volume
-	--- Reload (maybe)
 	vim.api.nvim_create_user_command("BeepBoopVolume", function (args)
-		local result = tonumber(args.args)
-
-		if type(result) == "number" then
-			result = math.max(0, math.min(result, 100))
-			companion:set_volume(result)
-		else
-			error("[beepboop] Usage: BeepBoopVolume {number 0 - 100})")
+		if #args.fargs == 0 then
+			vim.print("[beepboop] Usage: BeepBoopVolume {number 0 - 100})")
+			return;
 		end
-	end, {})
+
+		local result = tonumber(args.fargs[1])
+		if result == nil then
+			vim.print("[beepboop] Usage: BeepBoopVolume {number 0 - 100})")
+			return
+		end
+
+		result = math.max(0, math.min(result, 100))
+		companion:set_volume(result)
+	end, { nargs = 1 })
 end
 
 return M

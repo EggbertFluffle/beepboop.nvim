@@ -33,16 +33,16 @@ M.play = function(trigger_name)
 	M.state.companion:play_sound(trigger_name)
 end
 
-M.enable = function ()
-	M.state.config.enabled = true
+M.mute = function ()
+	M.state.companion:set_mute(true)
 end
 
-M.disable = function ()
-	M.state.config.enabled = true
+M.unmute = function ()
+	M.state.companion:set_mute(false)
 end
 
-M.toggle = function ()
-	M.state.config.enabled = not M.state.config.enabled
+M.toggle_mute = function ()
+	M.state.companion:toggle_mute()
 end
 
 ---@param volume integer Volume of beepboop from 0 - 100

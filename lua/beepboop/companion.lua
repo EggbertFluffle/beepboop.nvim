@@ -2,10 +2,10 @@
 ---@module 'companion'
 
 ---@class Companion
----@field handle uv.uv_process_t Libuv process handling the companion binary 
----@field pid integer The PID of the companion binary
----@field stdin uv.uv_pipe_t|nil Pipe to companion binary stdin
----@field stderr uv.uv_pipe_t|nil Pipe to companion binary stderr
+---@field handle? uv.uv_process_t Libuv process handling the companion binary 
+---@field pid? integer The PID of the companion binary
+---@field stdin uv.uv_pipe_t? Pipe to companion binary stdin
+---@field stderr uv.uv_pipe_t? Pipe to companion binary stderr
 local M = {}
 
 local utils = require("beepboop.utils")
@@ -22,16 +22,11 @@ local load_sound_files = function(self, theme)
 			M:send_command({ "load_sound", sound_map.trigger_name, file_path })
 		end
 
-		local command = string.format(
-			"trigger_volume %s %d\n",
-			sound_map.trigger_name,
-			128 * (sound_map.volume / 100)
-		)
-		M.stdin:write(command)
+		M:send_command({ "trigger_volume", sound_map.trigger_name, tostring(sound_map.volume) })
 	end
 end
 
----Intialize the companion binary
+---Initialize the companion binary
 ---@param self Companion
 ---@param config Config
 M.initialize = function(self, config)
@@ -39,7 +34,7 @@ M.initialize = function(self, config)
 	self.stderr = vim.uv.new_pipe(false)
 
 	-- Start the companion binary
-	local binary = vim.fs.joinpath(config.binary_path, config.binary_name)
+	local binary = config.binary_path
 	local handle, pid_or_err = vim.uv.spawn(binary,
 		{
 			stdio = {
@@ -49,9 +44,7 @@ M.initialize = function(self, config)
 			},
 			detached = true
 		},
-		function (code, signal)
-			vim.print("exit code: " .. code)
-			vim.print("exit signal: " .. signal)
+		function (_, _)
 		end
 	)
 
@@ -63,13 +56,15 @@ M.initialize = function(self, config)
 	self.pid = pid_or_err --[[@as integer]]
 
 	self.stderr:read_start(function(_, chunk)
-		-- vim.print(chunk, 0)
+		-- vim.print(chunk)
 	end)
 
 	assert(self.handle and self.handle:is_active(), "Companion binary could not be started!")
 
 	load_sound_files(self, config.theme --[[@as Theme]])
+
 	self:set_volume(config.volume)
+	self:set_mute(config.mute)
 
 	vim.api.nvim_create_autocmd("VimLeavePre", {
 		group = "beepboop_core",
@@ -86,10 +81,10 @@ local download_binary = function(config)
 	end
 
 	local latest_tag = "test"
-	local binary_name = "boopbeep-" .. utils.get_arch() .. "-" .. utils.get_os()
+	local bin_name = "boopbeep-" .. utils.get_arch() .. "-" .. utils.get_os()
 	local download_url = string.format(
 		"https://github.com/EggbertFluffle/boopbeep/releases/download/%s/%s",
-		latest_tag, binary_name
+		latest_tag, bin_name
 	)
 
 	local bin_dir = vim.fs.joinpath(vim.fn.stdpath("data"), "beepboop", "bin")
@@ -97,22 +92,21 @@ local download_binary = function(config)
 		error("[beepboop] Unable to make bin directory for binary download")
 	end
 
-	if vim.fn.executable(vim.fs.joinpath(bin_dir, binary_name)) == 0 then
+	if vim.fn.executable(vim.fs.joinpath(bin_dir, bin_name)) == 0 then
 		print(string.format("[beepboop] Downloading %s...", download_url))
-		local curl_res= vim.system({ "curl", "-L", "-o", vim.fs.joinpath(bin_dir, binary_name), download_url }):wait()
+		local curl_res= vim.system({ "curl", "-L", "-o", vim.fs.joinpath(bin_dir, bin_name), download_url }):wait()
 		if curl_res.code ~= 0 then
 			error(string.format("[beepboop] Failed to download binary: %s", curl_res.stderr))
 		end
 
 		-- Make it executable
-		local chmod_res= vim.system({ "chmod", "+x", vim.fs.joinpath(bin_dir, binary_name)}):wait()
+		local chmod_res= vim.system({ "chmod", "+x", vim.fs.joinpath(bin_dir, bin_name)}):wait()
 		if chmod_res.code ~= 0 then
 			error("[beepboop] Failed to make binary executable: " .. chmod_res.stderr)
 		end
 	end
 
-	config.binary_name = binary_name
-	config.binary_path = bin_dir
+	config.binary_path = vim.fs.joinpath(bin_dir, bin_name)
 end
 
 ---@param config Config
@@ -154,11 +148,10 @@ local build_binary = function (config)
 		end
 	end
 
-	local path = vim.fs.joinpath(build_dir, "zig-out", "bin")
-	local name = "boopbeep"
+	local bin_path = vim.fs.joinpath(build_dir, "zig-out", "bin", "boopbeep")
 
 	-- Build repository using zig if it isn't built
-	if not vim.uv.fs_stat(vim.fs.joinpath(path, name)) then
+	if not vim.uv.fs_stat(bin_path) then
 		print("[beepboop] Building boopbeep to " .. build_dir .. "...")
 		local result = vim.system({ "zig", "build" }, { cwd = build_dir }):wait()
 		if result.code ~= 0 then
@@ -166,28 +159,20 @@ local build_binary = function (config)
 		end
 	end
 
-	config.binary_path = path
-	config.binary_name = name
+	config.binary_path = bin_path
 end
 
 ---@param config Config
 M.validate = function (config)
-	if config.binary_name == nil then
-		local full_name = "boopbeep-" .. utils.get_arch() .. "-" .. utils.get_os()
-		if vim.fn.executable(vim.fs.joinpath(config.binary_path, full_name)) == 0 then
-			config.binary_name = full_name
-		elseif vim.fn.executable(vim.fs.joinpath(config.binary_path, "beepboop")) == 0 then
-			config.binary_name = "beepboop"
-		end
-	end
-
-	if vim.fn.executable(vim.fs.joinpath(config.binary_path, config.binary_name)) == 0 then
+	if vim.fn.executable(config.binary_path) == 0 then
 		if config.get_binary_method == "download" then
 			download_binary(config)
 		elseif config.get_binary_method == "build" then
 			build_binary(config)
 		elseif config.get_binary_method == "none" then
-			error("[beepboop] Companion not found. Get companion method nil")
+			if config.binary_path == "" or vim.fn.executable(config.binary_path) == 0 then
+				error(string.format("[beepboop] No binary get method, and invalid path provided: %s", config.binary_path))
+			end
 		end
 	end
 end
@@ -211,17 +196,17 @@ end
 ---@param self Companion
 ---@param volume integer
 M.set_volume = function (self, volume)
-	self:send_command({ "set_master_volume", tostring(volume) })
+	self:send_command({ "master_volume", tostring(volume) })
 end
 
 ---@param self Companion
-M.mute = function(self)
-	self:send_command("mute")
-end
-
----@param self Companion
-M.unmute = function(self)
-	self:send_command("unmute")
+---@param mute boolean
+M.set_mute = function (self, mute)
+	if mute then
+		self:send_command("mute")
+	else
+		self:send_command("unmute")
+	end
 end
 
 ---@param self Companion
