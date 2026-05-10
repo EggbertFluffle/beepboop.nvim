@@ -85,10 +85,12 @@ local download_binary = function(config)
 			error(string.format("[beepboop] Failed to download binary: %s", curl_res.stderr))
 		end
 
-		-- Make it executable
-		local chmod_res= vim.system({ "chmod", "+x", vim.fs.joinpath(bin_dir, bin_name)}):wait()
-		if chmod_res.code ~= 0 then
-			error("[beepboop] Failed to make binary executable: " .. chmod_res.stderr)
+		-- Make it executable if not on windows
+		if utils.get_os() ~= "windows" then
+			local chmod_res= vim.system({ "chmod", "+x", vim.fs.joinpath(bin_dir, bin_name)}):wait()
+			if chmod_res.code ~= 0 then
+				error("[beepboop] Failed to make binary executable: " .. chmod_res.stderr)
+			end
 		end
 	end
 
