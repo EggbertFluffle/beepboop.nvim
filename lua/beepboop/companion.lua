@@ -63,6 +63,11 @@ local download_binary = function(config)
 
 	local latest_tag = "test"
 	local bin_name = "boopbeep-" .. utils.get_arch() .. "-" .. utils.get_os()
+
+	if utils.get_os() == "windows" then
+		bin_name = bin_name .. ".exe"
+	end
+
 	local download_url = string.format(
 		"https://github.com/EggbertFluffle/boopbeep/releases/download/%s/%s",
 		latest_tag, bin_name
@@ -75,7 +80,7 @@ local download_binary = function(config)
 
 	if vim.fn.executable(vim.fs.joinpath(bin_dir, bin_name)) == 0 then
 		print(string.format("[beepboop] Downloading %s...", download_url))
-		local curl_res= vim.system({ "curl", "-L", "-o", vim.fs.joinpath(bin_dir, bin_name), download_url }):wait()
+		local curl_res = vim.system({ "curl", "-L", "-o", vim.fs.joinpath(bin_dir, bin_name), download_url }):wait()
 		if curl_res.code ~= 0 then
 			error(string.format("[beepboop] Failed to download binary: %s", curl_res.stderr))
 		end
