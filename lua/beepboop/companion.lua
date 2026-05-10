@@ -10,21 +10,6 @@ local M = {}
 
 local utils = require("beepboop.utils")
 
----Load validated sound files from config into companion
----@param self Companion
----@param theme Theme 
-local load_sound_files = function(self, theme)
-	assert(self.handle:is_active(), "Companion binary handle is not active!\n")
-
-	for _, sound_map in ipairs(theme.sound_maps) do
-		for _, file_name in ipairs(sound_map.sounds) do
-			local file_path = vim.fs.joinpath(theme.sound_directory, file_name)
-			M:send_command({ "load_sound", sound_map.trigger_name, file_path })
-		end
-
-		M:send_command({ "trigger_volume", sound_map.trigger_name, tostring(sound_map.volume) })
-	end
-end
 
 ---Initialize the companion binary
 ---@param self Companion
@@ -48,7 +33,7 @@ M.initialize = function(self, config)
 		end
 	)
 
-	if not handle then
+	if not handle or not handle:is_active() then
 		error("[beepboop] Starting companion failed: " .. pid_or_err --[[@as string]])
 	end
 
@@ -58,10 +43,6 @@ M.initialize = function(self, config)
 	self.stderr:read_start(function(_, chunk)
 		-- vim.print(chunk)
 	end)
-
-	assert(self.handle and self.handle:is_active(), "Companion binary could not be started!")
-
-	load_sound_files(self, config.theme --[[@as Theme]])
 
 	self:set_volume(config.volume)
 	self:set_mute(config.mute)
@@ -142,9 +123,17 @@ local build_binary = function (config)
 
 		print(string.format("[beepboop] Cloning %s...", remote_url))
 
-		local result = vim.system({ "git", "clone", remote_url, build_dir }):wait()
+		local result = vim.system({
+			"git",
+			"clone",
+			"-c",
+			"credential.helper=", -- Fail if no credentials
+			remote_url,
+			build_dir
+		}):wait()
+
 		if result.code ~= 0 then
-			error(string.format("[beepboop] git clone failed: %s", result.stderr))
+			error(string.format("[beepboop] git clone failed: \n%s", result.stderr))
 		end
 	end
 

@@ -104,10 +104,16 @@ local load_remote_theme = function (url, themes_directory)
 	if not vim.uv.fs_stat(vim.fs.joinpath(themes_directory, directory_name)) then
 		print(string.format("[beepboop] Cloning %s...", url))
 
-		local result = vim.system({ "git", "clone", url, vim.fs.joinpath(themes_directory, directory_name) }):wait()
+		local result = vim.system({
+			"git",
+			"-c",
+			"credential.helper=", -- Fails if not credentials
+			"clone",
+			url, vim.fs.joinpath(themes_directory, directory_name)
+		}):wait()
 
 		if result.code ~= 0 then
-			error(string.format("[beepboop] Clone of %s could not be completed: %s", url, result.stderr))
+			error(string.format("[beepboop] Clone of %s could not be completed: \n%s", url, result.stderr))
 		end
 	end
 
@@ -115,6 +121,20 @@ local load_remote_theme = function (url, themes_directory)
 	local theme = utils.read_json(vim.fs.joinpath(themes_directory, directory_name, "theme.json"))
 	theme.sound_directory = vim.fs.joinpath(themes_directory, directory_name, "sounds")
 	return theme
+end
+
+---Load validated sound files from config into companion
+---@param theme Theme 
+---@param companion Companion
+M.load_sound_files = function(theme, companion)
+	for _, sound_map in ipairs(theme.sound_maps) do
+		for _, file_name in ipairs(sound_map.sounds) do
+			local file_path = vim.fs.joinpath(theme.sound_directory, file_name)
+			companion:send_command({ "load_sound", sound_map.trigger_name, file_path })
+		end
+
+		companion:send_command({ "trigger_volume", sound_map.trigger_name, tostring(sound_map.volume) })
+	end
 end
 
 ---@param config Config
