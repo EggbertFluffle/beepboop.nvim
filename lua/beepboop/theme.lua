@@ -84,12 +84,12 @@ end
 ---@param theme_directory string
 ---@return Theme
 local load_local_theme = function (theme_directory)
-	local theme_json = vim.fs.joinpath(theme_directory, "theme.json")
-	if not vim.uv.fs_stat(theme_json) then
-		error(string.format("Cannot find file \"%s\"", theme_json))
+	local theme_file = vim.fs.joinpath(theme_directory, "theme.lua")
+	if not vim.uv.fs_stat(theme_file) then
+		error(string.format("Cannot find file \"%s\"", theme_file))
 	end
 
-	local theme = utils.read_json(theme_json)
+	local theme = loadfile(theme_file)()
 	theme.sound_directory = vim.fs.joinpath(theme_directory, "sounds")
 	return theme
 end
@@ -118,9 +118,8 @@ local load_remote_theme = function (url, themes_directory)
 	end
 
 	-- TODO: Check for updates via git fetch or smth
-	local theme = utils.read_json(vim.fs.joinpath(themes_directory, directory_name, "theme.json"))
-	theme.sound_directory = vim.fs.joinpath(themes_directory, directory_name, "sounds")
-	return theme
+
+	return load_local_theme(vim.fs.joinpath(themes_directory, directory_name))
 end
 
 ---Load validated sound files from config into companion
