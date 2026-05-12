@@ -164,8 +164,6 @@ The three methods can be combined to give sounds multiple access points. This ca
 {
     name = "untitled",
     sound_directory = "$CONFIG/sounds/", -- Only for in-config themes
-    max_sounds = 15, -- How many of the same sound can play at once
-    cooldown = 0 -- Master cooldown for playing sounds (ms)
 }
 ```
 
