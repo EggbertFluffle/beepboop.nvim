@@ -18,6 +18,12 @@ M.initialize = function(self, config)
 	self.stdin = vim.uv.new_pipe(false)
 	self.stderr = vim.uv.new_pipe(false)
 
+	if self.handle then
+		if self.handle:kill("sigkill") == 1 then
+			error("[beepboop] Error when killing existing companion binary")
+		end
+	end
+
 	-- Start the companion binary
 	local binary = config.binary_path
 	local handle, pid_or_err = vim.uv.spawn(binary,

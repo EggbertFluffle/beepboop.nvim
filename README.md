@@ -195,6 +195,14 @@ return {
     }
 }
 ```
+## User Commands
+| Command                         | Description                                   |
+| ------------------------------- | --------------------------------------------- |
+| :BeepboopMute                   | Mutes                                         |
+| :BeepboopUnmute                 | Unmutes                                       |
+| :BeepboopToggleMute             | Toggles mute                                  |
+| :BeepboopVolume <INTEGER 1-100> | Sets master volume                            |
+| :BeepboopTheme <THEME URI>      | Switch themes based on remote or local themes |
 
 ## Plugin Compatability
 Just some notes on using other plugins that are known to or may conflict with beepboop.nvim
