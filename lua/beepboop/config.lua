@@ -17,7 +17,7 @@ M.default_config = {
 	binary_path = "",
 	theme_directory = vim.fs.joinpath(vim.fn.stdpath("data"), "beepboop", "themes"),
 	volume = 100,
-	get_binary_method = "none",
+	get_binary_method = "download"
 }
 
 ---Validate and correct any tolerable errors in the config

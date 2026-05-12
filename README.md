@@ -1,103 +1,204 @@
 # BeepBoop.nvim
 
-BeepBoop is a neovim plugin intended to make it easy to incorporate audio cues into neovim. This can be for accessibility reasons, or in my case, just for fun! Check out the demo below for a little taste of whats possible:
+`Beepboop.nvim` is a Neovim plugin intended to make it easy to incorporate audio cues into Neovim. This can be for accessibility reasons, or in my case, just for fun! Check out the demo below for a little taste of whats possible:
 
 https://github.com/user-attachments/assets/0c3fa223-4d8c-428e-b561-bcbee5ccce8a
 
-## Installation instructions
+## Quick Start
 
-### I. Get the plugin into your config
-Include the following in your `lazy.nvim` config:
+Below are some configs you can throw right into your editor to get some sounds FAST. Take a look at [Getting Started](https://github.com/EggbertFluffle/beepboop.nvim#getting-started) for information on installation, themes and options.
+
+### vim.pack
+
+```lua
+vim.pack.add({ "https://github.com/EggbertFluffle/beepboop.nvim" })
+
+require("beepboop").setup({
+    theme = "https://github.com/EggbertFluffle/mingleburb.beepboop"
+})
+```
+
+### lazy.nvim
+
 ```lua
 {
     "EggbertFluffle/beepboop.nvim",
     opts = {
-        audio_player = "paplay",
-        max_sounds = 20,
-        sound_map = {
-            -- SOUND MAP DEFENITIONS HERE
+        theme = "https://github.com/EggbertFluffle/mingleburb.beepboop"
+    }
+}
+```
+
+>[!Note]
+> `:checkhealth beepboop` makes it easy to diagnose problems with your configuration
+
+## Getting Started
+
+### Installation
+
+`Beepboop.nvim` uses a companion binary called [boopbeep](https://github.com/EggbertFluffle/boopbeep). The `get_binary_method` option controls how `beepboop.nvim` will get that binary, and uses `"download"` by default.
+
+* `"download"` (default) - Downloads appropriate binary from [boopbeep's releases](https://github.com/EggbertFluffle/boopbeep/releases)
+* `"build"` - Requires zig `0.16.0` to be installed, downloads and builds `boopbeep` from source
+* `"none"` - No method is used. User **must** set `binary_path` to point to a `boopbeep` executable
+
+### Themes
+
+Themes can be aquired and crafted in several ways. The easiest is through theme repositories. [typewriter.beepboop](https://github.com/EggbertFluffle/typewriter.beepboop) and [mingleburb.beepboop](https://github.com/EggbertFluffle/mingleburb.beepboop) are both remote theme repositories, and can be installed by simply providing their URL. Local theme repositories can be used the same way by providing their **absolute** path.
+
+```lua
+{
+    theme = "https://github.com/EggbertFluffle/typewriter.beepboop",
+    ...
+}
+```
+
+Finally, themes can be constructed *in-config*. Read more about making themes at [Making Themes](https://github.com/EggbertFluffle/beepboop.nvim#making-themes).
+
+## Configuration
+
+### Default Configuration
+
+```lua
+{
+	mute = false, -- Start muted
+	binary_path = "", -- Path to boopbeep binary
+    volume = 100, -- Starting master volume
+    get_binary_method = "download",
+    theme_directory = "$DATA/beepboop/themes/", -- Theme download location
+    theme = nil,
+}
+```
+
+### Making Themes
+
+#### Sound Maps
+
+Theme's are comprised of "sound maps", which typically associate an action with some sounds. They can correspond to one or multiple sounds, where triggering a sound map will play one of its sounds at random. Sounds are represented as files relative to a user defined `sounds_directory`.
+
+```lua
+{
+    theme = {
+        sounds_directory = "/home/eggbert/.config/nvim/sounds/"
+        sound_maps = {
+            { trigger_name = "boom", sound = "vine_boom.wav" }
         }
     }
 }
 ```
 
-### II. Create your sound maps
-A sound map can be made in several different ways. The first way is to attach them to a neovim `auto_command`. A list of all the auto_commands in neovim can be found here [https://neovim.io/doc/user/autocmd.html](here).
+There are three ways to trigger sound maps within `beepboop.nvim`, those being auto commands, keymaps and trigger names. Trigger names are the easiest to understand; A sound map will assign a "trigger name" to a sound. That sound can be played using the trigger name, from anywhere, with `require("beepboop").play("TRIGGER_NAME")`.
+
+```lua
+{
+    sounds_maps = {
+        { trigger_name = "runcode", sound = "bell.wav" }
+    }
+}
+
+vim.keymap.set("n", "<C-Enter>", function() 
+    require("beepboop").play("runcode") -- Same trigger name
+end)
+```
+
+Second, is to use Neovim's [https://neovim.io/doc/user/autocmd.html](auto commands). These are editor events that `beepboop.nvim` can easily attach sound to.
+
 ```lua
 {
     sound_map = {
-        { auto_command = "VimEnter", sound = "chestopen.oga" },
-        { auto_command = "InsertCharPre", sounds = { "stone1.oga", "stone2.oga", "stone3.oga" } }
+        { 
+            auto_command = "VimEnter", -- When Neovim starts
+            sound = "chestopen.oga" 
+        }, 
+        { 
+            auto_command = "InsertCharPre", -- Insert mode key presses
+            sounds = {
+                "stone1.oga",
+                "stone2.oga",
+                "stone3.oga" 
+            }
+        }
     }
 }
 ```
 
-The second way is to use `key_maps` which are very simmilar to `vim.keymap.set("mode", "keychord", "rhs")`.
+Third, keymaps behave just like `vim.keymap.set` but also get the option to be blocking. Blocking indicates that the keypress should not be passed through after the sound effect, and non-blocking (the default) will feed the keys through. Essentially previously made keymaps or common editor commands still work while also playing a sound. 
+
+>[!Note] 
+>Non-blocking `beepboop.nvim` keymaps will not override existing keymaps, but new Neovim keymaps **will** override these. To avoid this, just make sure `beepboop.nvim` is configured *after* the rest of your configuration.
+
 ```lua
 {
-    { key_map = { mode = "n", key_chord = "<leader>pv", blocking = false }, sound = "chestopen.oga" },
-    { key_map = { mode = "n", key_chord = "<C-Enter>", blocking = true }, sounds = {"stone1.oga", "stone2.oga", "stone3.oga", "stone4.oga"} },
-}
-```
-These won't override previously defined keymaps for those keychords by default, but other keymap defenitions *WILL* override these! To avoid this just ensure that your config for beepboop.nvim *runs after* any keymaps you don't want to override. There is also the option for blocking and non-blocking keymaps to sounds. This means, when blocking is enabled, it will be like a normal keymap and *OVERRIDE* any previously set keymap, whereas when blocking is disabled, any previously made keymap will still play in addition to the sound.
-
-The final way is to use triggers and then call the trigger somewhere else in lua code/neovim config.
-```lua
--- beepboop config
-{
-    -- The sound_map below can EITHER be triggered by the key_chord OR a call to require("beepboop").play_audio("boom")
-    { trigger_name = "boom", key_map = { mode = "n", key_chord = "<leader>pv" }, sound = "boom.oga" },
-
-    -- The sound_map below can ONLY be tirggered by a call to require("beepboop").play_audio("bap")
-    { trigger_name = "bap", sound = "bap.oga" },
-}
-
--- other file
-vim.keymap.set("n", "<leader>boom", function() -- just an example of how it *could* be called
-    require("beepboop").play_audio("bap")
-end)
-```
-
-
-Sounds can either be defined at `sound = "SOUND NAME"` which will play the defined sound when the sound map is triggered in some whay. The other option is to use sounds, which will play a random defined sound from the list when the sound_map is triggered, defined like so, `sounds = { "SOUND NAME", "OTHER SOUND NAME", "ONE MORE HEHE" }`.
-
-### III. Choose your `audio_player` based on operating system. This is the program that beepboop will call to play the audio files you give it.
-
-#### Unix-like (Linux and MacOS) 
-
-* paplay - For PulseAudio, the program `paplay` works flawlessly
-* pw-play - For users of PipeWire or anyone using its client
-* ffplay - Comes with your distro's FFmpeg package
-* mpv - Comes in mpv package, very good video player as well
-* afplay (***MacOS exclusive***) - Comes default on MacOS, but as far as I can tell **only supports .mp3 and .wav file types**.
-
-WSL is also supported by these audio players but has some issues with latency and is still being tested.
-
-#### Windows
-
-Currently no viable options for Windows were identified immediately (and I don't have a great urge to support it either), BUT support for **WSL** is available, albeit not very well. (see above)
-
-#### No support
-* aplay from ALSA (more research) - doesn't have much support for popular audio file formats
-* email me if you have any ideas for more audio players that could be useful
-
-### IV. Create a sounds folder
-By default it will look in your config folder `sounds` directory, for example: `/home/eggbert/.config/nvim/sounds/`, or the equivalent: `~/.config/nvim/sounds`. This can be changed and spesified with the `sound_directory` option in your config like so:
-```lua
-{
-    sound_directory = "/home/eggbert/.config/nvim/lua/eggbert/sounds/",
+    { 
+        key_map = { mode = "n", key_chord = "<leader>pv", blocking = false },
+        sound = "chestopen.oga" 
+    },
+    { 
+        key_map = { mode = "n", key_chord = "<C-Enter>", blocking = true }, 
+        sounds = { "stone1.oga", "stone2.oga", "stone3.oga", "stone4.oga" }
+    }
 }
 ```
 
-### V. Other options
-After loading beepboop.nvim, you get access to some usercommands like `:BeepBoopVolume {volum}`, `:BeepBoopEnable`/`Disable` and `:BeepBoopToggle` which all give volume/mute control over beepboop's playback. Additionally, the `enable_sound` option will either pick the default state for the result of these commands when neovim is started.
-* If you find that there are too many sounds playing, there is a default `max_sounds` of 20, but this property can be altered if desired.
+The three methods can be combined to give sounds multiple access points. This can be useful for assignming the same sounds to the backspace key, and all insertion characters like so.
 
-### VI. Plugin Compatability
+```lua
+{
+    sound_maps = {
+        { 
+            auto_command = "InsertCharPre", -- Standard character insert
+            key_map = { mode = "i", key_chord = "<BS>" }, -- Backspace
+            sounds = {
+                "stone1.oga",
+                "stone2.oga",
+                "stone3.oga" 
+            }
+        }
+    }
+}
+```
+
+#### Theme Default Options
+
+```lua
+    name = "untitled",
+    sound_directory = "$CONFIG/sounds/", -- Only for in-config themes
+    max_sounds = 15, -- How many of the same sound can play at once
+    cooldown = 0 -- Master cooldown for playing sounds (ms)
+```
+
+#### Theme Repositories
+
+Theme repositories are very easy to make if you already understand how to make themes. A theme repository can by any remotely hosted git repository and typically has the file structure seen below. The `theme.lua` simply returns a table containing the theme definition, but can also include arbitrary Lua code to be run for setup.
+
+```
+.
+├── sounds
+│   ├── sound3.wav
+│   ├── sound1.wav
+│   └── sound2.wav
+└── theme.lua
+```
+
+```lua
+-- theme.lua
+
+return {
+    name = "new_theme",
+    sound_maps = {
+		{
+			key_map = { mode = "n", key_chord = "j" },
+			sounds = { "scroll1.wav", "scroll2.wav", "scroll3.wav" }
+		}
+    }
+}
+```
+
+## Plugin Compatability
 Just some notes on using other plugins that are known to or may conflict with beepboop.nvim
 
-#### nvim-autopairs
-If using nvim-autopairs this will not allow beepboop.nvim to map sounds to <BS> (backspace key) or <CR> (enter key) by default. If you don't intend to map these keys to sounds, there's no conflict. If you do though, you need to turn off the maps for autopairs to <BS> and or  <CR> by including the following in your nvim-autopairs config:
+### nvim-autopairs
+If using nvim-autopairs this will not allow beepboop.nvim to map sounds to `<BS>` (backspace key) or `<CR>` (enter key) by default. If you don't intend to map these keys to sounds, there's no conflict. If you do though, you need to turn off the maps for autopairs to `<BS>` and or  `<CR>` by including the following in your nvim-autopairs config:
 ```lua
 {
     "windwp/nvim-autopairs",
@@ -110,5 +211,17 @@ If using nvim-autopairs this will not allow beepboop.nvim to map sounds to <BS> 
 },
 ```
 
-## Bug Reporting
-I expect there to be a lot of bugs. If you end up finding one, please feel free to let me know through (or don't) through GitHub Issues or a simple e-mail to hdiambrosio@gmail.com. I'd love the support if you can offer it. Additionally, if you have any ideas, I'd love to hear them and be sure to tell your friends how lit this plugin is.
+## Themes List
+
+If you have a theme you want to include here, go ahead and make an issue!
+
+| Theme                                                                        | Description          |
+| ---------------------------------------------------------------------------- | -------------------- |
+| [mingleburb.beepboop](https://github.com/EggbertFluffle/mingleburb.beepboop) | Minecraft noises     |
+| [typewriter.beepboop](https://github.com/EggbertFluffle/typewriter.beepboop) | Typewriter clicks    |
+| [teehee.beepboop](https://github.com/EggbertFluffle/teehee.beepboop)         | *"What have I done"* |
+| [keeb.beepboop](https://github.com/EggbertFluffle/keeb.beepboop)             | Mechanical keyboard  |
+
+## Contribution and Bug Reporting
+
+All contributions are welcome, just note that bugs or features for the companion binary should go to [boopbeep's repo](https://github.com/EggbertFluffle/boopbeep). If you have any question feel free to contact me via any of [these methods](https://eggbert.xyz#contact)
