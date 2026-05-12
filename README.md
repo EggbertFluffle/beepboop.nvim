@@ -161,10 +161,12 @@ The three methods can be combined to give sounds multiple access points. This ca
 #### Theme Default Options
 
 ```lua
+{
     name = "untitled",
     sound_directory = "$CONFIG/sounds/", -- Only for in-config themes
     max_sounds = 15, -- How many of the same sound can play at once
     cooldown = 0 -- Master cooldown for playing sounds (ms)
+}
 ```
 
 #### Theme Repositories
@@ -198,17 +200,13 @@ return {
 Just some notes on using other plugins that are known to or may conflict with beepboop.nvim
 
 ### nvim-autopairs
-If using nvim-autopairs this will not allow beepboop.nvim to map sounds to `<BS>` (backspace key) or `<CR>` (enter key) by default. If you don't intend to map these keys to sounds, there's no conflict. If you do though, you need to turn off the maps for autopairs to `<BS>` and or  `<CR>` by including the following in your nvim-autopairs config:
+If using [nvim-autopairs](https://github.com/windwp/nvim-autopairs) this will not allow beepboop.nvim to map sounds to `<BS>` (backspace key) or `<CR>` (enter key) by default. If you don't intend to map these keys to sounds, there's no conflict. If you do though, you need to turn off the maps for autopairs to `<BS>` and or  `<CR>` by including the following in your nvim-autopairs config:
+
 ```lua
 {
-    "windwp/nvim-autopairs",
-    config = function()
-        require("nvim-autopairs").setup({
-            map_bs = false, -- removes map to <BS>
-            map_cr = false  -- removes map to <CR>
-        })
-    end,
-},
+    map_bs = false, -- removes map to <BS>
+    map_cr = false  -- removes map to <CR>
+}
 ```
 
 ## Themes List
