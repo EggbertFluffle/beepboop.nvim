@@ -1,5 +1,4 @@
 ---Used to load, find, and validate themes
----@module 'theme'
 
 local utils = require("beepboop.utils")
 
@@ -20,14 +19,14 @@ local default_theme = {
 
 ---@class KeyMap
 ---@field mode string
----@field key_chord string
+---@field keychord string
 ---@field blocking? boolean
-local key_map = {}
+local keymap = {}
 
 ---@class SoundMap
----@field auto_command? string
----@field trigger_name? string
----@field key_map? KeyMap
+---@field autocommand? string
+---@field trigger? string
+---@field keymap? KeyMap
 ---@field sounds? string[]
 ---@field sound? string
 ---@field volume? integer
@@ -39,9 +38,9 @@ local validate_sound_maps = function (theme)
 
 	for _, sound_map in ipairs(theme.sound_maps) do
 		vim.validate({
-			{ sound_map.auto_command, { "string", "nil" } },
-			{ sound_map.trigger_name, { "string", "nil" } },
-			{ sound_map.key_map, { "table", "nil" } },
+			{ sound_map.autocommand, { "string", "nil" } },
+			{ sound_map.trigger, { "string", "nil" } },
+			{ sound_map.keymap, { "table", "nil" } },
 			{ sound_map.sounds, { "table", "nil" } },
 			{ sound_map.sound, { "string", "nil" } },
 			{ sound_map.volume, { "number", "nil", } }
@@ -49,8 +48,8 @@ local validate_sound_maps = function (theme)
 
 		sound_map.volume = sound_map.volume or 100
 
-		if sound_map.trigger_name == nil then
-			sound_map.trigger_name = string.format("trigger%d", trigger_count)
+		if sound_map.trigger == nil then
+			sound_map.trigger = string.format("trigger%d", trigger_count)
 			trigger_count = trigger_count + 1
 		end
 
@@ -67,15 +66,15 @@ local validate_sound_maps = function (theme)
 			end
 		end
 
-		if sound_maps.key_map then
+		if sound_maps.keymap then
 			vim.validate({
-				{ key_map.mode, "string" },
-				{ key_map.key_chord, "string" },
-				{ key_map.blocking, { "boolean", "nil" } }
+				{ keymap.mode, "string" },
+				{ keymap.keychord, "string" },
+				{ keymap.blocking, { "boolean", "nil" } }
 			})
 
-			if key_map.blocking == nil then
-				key_map.blocking = false
+			if keymap.blocking == nil then
+				keymap.blocking = false
 			end
 		end
 	end
@@ -129,10 +128,10 @@ M.load_sound_files = function(theme, companion)
 	for _, sound_map in ipairs(theme.sound_maps) do
 		for _, file_name in ipairs(sound_map.sounds) do
 			local file_path = vim.fs.joinpath(theme.sound_directory, file_name)
-			companion:send_command({ "load_sound", sound_map.trigger_name, file_path })
+			companion:send_command({ "load_sound", sound_map.trigger, file_path })
 		end
 
-		companion:send_command({ "trigger_volume", sound_map.trigger_name, tostring(sound_map.volume) })
+		companion:send_command({ "trigger_volume", sound_map.trigger, tostring(sound_map.volume) })
 	end
 end
 

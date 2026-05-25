@@ -1,5 +1,4 @@
 ---Used to interface with the companion binary
----@module 'companion'
 
 ---@class Companion
 ---@field handle? uv.uv_process_t Libuv process handling the companion binary 
@@ -9,7 +8,6 @@
 local M = {}
 
 local utils = require("beepboop.utils")
-
 
 ---Initialize the companion binary
 ---@param self Companion
@@ -47,7 +45,7 @@ M.initialize = function(self, config)
 	self.pid = pid_or_err --[[@as integer]]
 
 	self.stderr:read_start(function(_, chunk)
-		-- vim.print(chunk)
+		vim.print(chunk)
 	end)
 
 	self:set_volume(config.volume)
@@ -190,9 +188,9 @@ M.send_command = function (self, command)
 end
 
 ---@param self Companion
----@param trigger_name string Name of sound trigger
-M.play_sound = function (self, trigger_name)
-	self:send_command({ "play_sound", trigger_name })
+---@param trigger string Name of sound trigger
+M.play_sound = function (self, trigger)
+	self:send_command({ "play_sound", trigger})
 end
 
 ---@param self Companion

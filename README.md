@@ -81,18 +81,18 @@ Theme's are comprised of "sound maps", which typically associate an action with 
     theme = {
         sounds_directory = "/home/eggbert/.config/nvim/sounds/"
         sound_maps = {
-            { trigger_name = "boom", sound = "vine_boom.wav" }
+            { trigger = "boom", sound = "vine_boom.wav" }
         }
     }
 }
 ```
 
-There are three ways to trigger sound maps within `beepboop.nvim`, those being auto commands, keymaps and trigger names. Trigger names are the easiest to understand; A sound map will assign a "trigger name" to a sound. That sound can be played using the trigger name, from anywhere, with `require("beepboop").play("TRIGGER_NAME")`.
+There are three ways to trigger sound maps within `beepboop.nvim`, those being auto commands, keymaps and triggers. Triggers are the easiest to understand; A sound map will assign a trigger to a sound. That sound can be played using the trigger, from anywhere, with `require("beepboop").play("TRIGGER")`.
 
 ```lua
 {
     sounds_maps = {
-        { trigger_name = "runcode", sound = "bell.wav" }
+        { trigger = "runcode", sound = "bell.wav" }
     }
 }
 
@@ -107,11 +107,11 @@ Second, is to use Neovim's [https://neovim.io/doc/user/autocmd.html](auto comman
 {
     sound_map = {
         { 
-            auto_command = "VimEnter", -- When Neovim starts
+            autocommand = "VimEnter", -- When Neovim starts
             sound = "chestopen.oga" 
         }, 
         { 
-            auto_command = "InsertCharPre", -- Insert mode key presses
+            autocommand = "InsertCharPre", -- Insert mode key presses
             sounds = {
                 "stone1.oga",
                 "stone2.oga",
@@ -130,11 +130,11 @@ Third, keymaps behave just like `vim.keymap.set` but also get the option to be b
 ```lua
 {
     { 
-        key_map = { mode = "n", key_chord = "<leader>pv", blocking = false },
+        keymap = { mode = "n", keychord = "<leader>pv", blocking = false },
         sound = "chestopen.oga" 
     },
     { 
-        key_map = { mode = "n", key_chord = "<C-Enter>", blocking = true }, 
+        keymap = { mode = "n", keychord = "<C-Enter>", blocking = true }, 
         sounds = { "stone1.oga", "stone2.oga", "stone3.oga", "stone4.oga" }
     }
 }
@@ -146,8 +146,8 @@ The three methods can be combined to give sounds multiple access points. This ca
 {
     sound_maps = {
         { 
-            auto_command = "InsertCharPre", -- Standard character insert
-            key_map = { mode = "i", key_chord = "<BS>" }, -- Backspace
+            autocommand = "InsertCharPre", -- Standard character insert
+            keymap = { mode = "i", keychord = "<BS>" }, -- Backspace
             sounds = {
                 "stone1.oga",
                 "stone2.oga",
@@ -164,8 +164,6 @@ The three methods can be combined to give sounds multiple access points. This ca
 {
     name = "untitled",
     sound_directory = "$CONFIG/sounds/", -- Only for in-config themes
-    max_sounds = 15, -- How many of the same sound can play at once
-    cooldown = 0 -- Master cooldown for playing sounds (ms)
 }
 ```
 
@@ -186,10 +184,9 @@ Theme repositories are very easy to make if you already understand how to make t
 -- theme.lua
 
 return {
-    name = "new_theme",
     sound_maps = {
 		{
-			key_map = { mode = "n", key_chord = "j" },
+			keymap = { mode = "n", keychord = "j" },
 			sounds = { "scroll1.wav", "scroll2.wav", "scroll3.wav" }
 		}
     }
