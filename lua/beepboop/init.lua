@@ -59,7 +59,7 @@ end
 
 ---@param trigger_name string Name of audio trigger
 M.play = function(trigger_name)
-	vim.validate({ trigger_name = { trigger_name, "string" } })
+	vim.validate({ trigger = { trigger_name, "string" } })
 	M.state.companion:play_sound(trigger_name)
 end
 

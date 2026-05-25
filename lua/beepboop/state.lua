@@ -1,5 +1,4 @@
 ---Holds all the state necessary for the plugin to run
----@module 'state'
 
 ---@class State
 ---@field config Config
