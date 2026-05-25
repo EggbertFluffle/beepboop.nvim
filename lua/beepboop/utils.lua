@@ -5,18 +5,18 @@ local M = {}
 ---@return string
 M.get_os = function ()
 	local os = jit.os:lower()
-	if os == "osx" or os == "mac" then
-		return "macos"
-	end
+
+	if os == "osx" or os == "mac" then return "macos" end
+
 	return os
 end
 
 ---@return string
 M.get_arch = function ()
 	local arch = jit.arch:lower()
-	if arch == "x64" then
-		arch = "x86"
-	end
+
+	if arch == "x64" then arch = "x86" end
+	if arch == "arm64" then arch = "aarch64" end
 
 	return arch
 end
