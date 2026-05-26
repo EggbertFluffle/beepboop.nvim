@@ -219,7 +219,9 @@ If using [nvim-autopairs](https://github.com/windwp/nvim-autopairs) this will no
 
 ## Themes List
 
-If you have made a theme that you want to include, go ahead and make an issue!
+Check out the publicly made themes at the [beepboop.nvim themes list](https://github.com/EggbertFluffle/theme_list.beepboop). If you have a theme you want to include, make an issue over there!
+
+Some "provided" themes for beepboop.nvim are listed below.
 
 | Theme                                                                        | Description          |
 | ---------------------------------------------------------------------------- | -------------------- |
