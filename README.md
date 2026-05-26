@@ -29,7 +29,7 @@ require("beepboop").setup({
 }
 ```
 
->[!Note]
+> [!Note]
 > `:checkhealth beepboop` makes it easy to diagnose problems with your configuration
 
 ## Getting Started
@@ -41,6 +41,9 @@ require("beepboop").setup({
 * `"download"` (default) - Downloads appropriate binary from [boopbeep's releases](https://github.com/EggbertFluffle/boopbeep/releases)
 * `"build"` - Requires zig `0.16.0` to be installed, downloads and builds `boopbeep` from source
 * `"none"` - No method is used. User **must** set `binary_path` to point to a `boopbeep` executable
+
+> [!Note]
+> Beepboop.nvim should work in most enviornments. WSL has not been tested, and building on MacOS seems to be finicky.
 
 ### Themes
 
@@ -87,7 +90,7 @@ Theme's are comprised of "sound maps", which typically associate an action with 
 }
 ```
 
-There are three ways to trigger sound maps within `beepboop.nvim`, those being auto commands, keymaps and triggers. Triggers are the easiest to understand; A sound map will assign a trigger to a sound. That sound can be played using the trigger, from anywhere, with `require("beepboop").play("TRIGGER")`.
+There are three ways to trigger sound maps within `beepboop.nvim`, those being auto commands, keymaps and triggers. Triggers are the easiest to understand; A sound map will assign a trigger to a sound. That sound can be played using the trigger from anywhere, with `require("beepboop").play("TRIGGER")`.
 
 ```lua
 {
@@ -101,7 +104,7 @@ vim.keymap.set("n", "<C-Enter>", function()
 end)
 ```
 
-Second, is to use Neovim's [https://neovim.io/doc/user/autocmd.html](auto commands). These are editor events that `beepboop.nvim` can easily attach sound to.
+Second, is to use Neovim's [auto commands](https://neovim.io/doc/user/autocmd.html). These are editor events that `beepboop.nvim` can easily attach sound to.
 
 ```lua
 {
@@ -122,10 +125,10 @@ Second, is to use Neovim's [https://neovim.io/doc/user/autocmd.html](auto comman
 }
 ```
 
-Third, keymaps behave just like `vim.keymap.set` but also get the option to be blocking. Blocking indicates that the keypress should not be passed through after the sound effect, and non-blocking (the default) will feed the keys through. Essentially previously made keymaps or common editor commands still work while also playing a sound. 
+Keymaps behave just like `vim.keymap.set` but also get the option to be blocking. Blocking indicates that the keypress should not be passed through after the sound effect, and non-blocking (the default) will feed the keys through. Essentially previously made keymaps or common editor commands still work while also playing a sound. 
 
 >[!Note] 
->Non-blocking `beepboop.nvim` keymaps will not override existing keymaps, but new Neovim keymaps **will** override these. To avoid this, just make sure `beepboop.nvim` is configured *after* the rest of your configuration.
+>Non-blocking `beepboop.nvim` keymaps will not override existing keymaps, but new Neovim keymaps **will** override these. To avoid this, just make sure `beepboop.nvim` is configured *after* the rest of your configuration, or at least after conflicting keymaps.
 
 ```lua
 {
@@ -169,7 +172,7 @@ The three methods can be combined to give sounds multiple access points. This ca
 
 #### Theme Repositories
 
-Theme repositories are very easy to make if you already understand how to make themes. A theme repository can by any remotely hosted git repository and typically has the file structure seen below. The `theme.lua` simply returns a table containing the theme definition, but can also include arbitrary Lua code to be run for setup.
+Theme repositories are very easy to make if you already understand how to make themes. A theme repository can by any remotely hosted git repository and typically has the file structure seen below. The `theme.lua` simply returns a table containing the theme definition, but can also include arbitrary Lua code to be run for setup. Check the [Theme List](https://github.com/EggbertFluffle/beepboop.nvim#themes-list) for examples.
 
 ```
 .
@@ -202,7 +205,7 @@ return {
 | :Beepboop theme <THEME URI>      | Switch themes based on remote or local themes |
 
 ## Plugin Compatability
-Just some notes on using other plugins that are known to or may conflict with beepboop.nvim
+Just some notes on using other plugins that are known to or may conflict with beepboop.nvim.
 
 ### nvim-autopairs
 If using [nvim-autopairs](https://github.com/windwp/nvim-autopairs) this will not allow beepboop.nvim to map sounds to `<BS>` (backspace key) or `<CR>` (enter key) by default. If you don't intend to map these keys to sounds, there's no conflict. If you do though, you need to turn off the maps for autopairs to `<BS>` and or  `<CR>` by including the following in your nvim-autopairs config:
@@ -216,7 +219,7 @@ If using [nvim-autopairs](https://github.com/windwp/nvim-autopairs) this will no
 
 ## Themes List
 
-If you have a theme you want to include here, go ahead and make an issue!
+If you have made a theme that you want to include, go ahead and make an issue!
 
 | Theme                                                                        | Description          |
 | ---------------------------------------------------------------------------- | -------------------- |
@@ -227,4 +230,4 @@ If you have a theme you want to include here, go ahead and make an issue!
 
 ## Contribution and Bug Reporting
 
-All contributions are welcome, just note that bugs or features for the companion binary should go to [boopbeep's repo](https://github.com/EggbertFluffle/boopbeep). If you have any question feel free to contact me via any of [these methods](https://eggbert.xyz#contact)
+All contributions are welcome. If you have any question feel free to contact me via any of [these methods](https://eggbert.xyz#contact)
