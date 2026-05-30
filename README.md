@@ -200,7 +200,7 @@ return {
 | -------------------------------- | --------------------------------------------- |
 | :Beepboop mute                   | Mutes                                         |
 | :Beepboop unmute                 | Unmutes                                       |
-| :Beepboop toggleMute             | Toggles mute                                  |
+| :Beepboop toggle_mute            | Toggles mute                                  |
 | :Beepboop volume <INTEGER 1-100> | Sets master volume                            |
 | :Beepboop theme <THEME URI>      | Switch themes based on remote or local themes |
 
