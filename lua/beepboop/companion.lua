@@ -45,7 +45,7 @@ M.initialize = function(self, config)
 	self.pid = pid_or_err --[[@as integer]]
 
 	self.stderr:read_start(function(_, chunk)
-		vim.print(chunk)
+		-- vim.print(chunk)
 	end)
 
 	self:set_volume(config.volume)
