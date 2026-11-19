@@ -82,7 +82,7 @@ Theme's are comprised of "sound maps", which typically associate an action with 
 ```lua
 {
     theme = {
-        sounds_directory = "/home/eggbert/.config/nvim/sounds/"
+        sound_directory = "/home/eggbert/.config/nvim/sounds/"
         sound_maps = {
             { trigger = "boom", sound = "vine_boom.wav" }
         }
