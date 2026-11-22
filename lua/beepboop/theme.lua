@@ -149,8 +149,6 @@ M.validate = function (config)
 		end
 	end
 
-
-	vim.print(config.theme.sound_directory)
 	if not vim.uv.fs_stat(config.theme.sound_directory) then
 		error(string.format("Sound directory \"%s\" is not a directory or is not readable", config.theme.sound_directory))
 	end
